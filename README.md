@@ -18,8 +18,11 @@ Manual name search is always available as a fallback, and recent scans are kept 
 
 ```bash
 npm install
-npx expo start
+npx expo start          # phone via Expo Go
+npx expo start --web    # local preview in Chrome
 ```
+
+![PokeWorth home screen in Chrome](docs/screenshots/home-chrome.png)
 
 > **OCR requires a development build.** The native text-recognition module does not exist in Expo Go, so scanning falls back to a notice there. Build with:
 >

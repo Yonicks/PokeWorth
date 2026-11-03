@@ -22,6 +22,7 @@ branch: the workflow edits the working tree but never commits or pushes.
   - `npx tsc --noEmit`
   - `npx expo lint`
   - `npx tsx scripts/smoke-test.ts` (needs network; skip with a note when offline)
+- **Test platforms (no paid services):** the Android emulator from Android Studio (Google Play system image) on Windows, and web (Chrome). Build development clients locally with `npx expo run:android`; the EAS free plan is the fallback. **iOS is deferred** until a Mac or a paid Apple Developer account is available. Real cards reach the emulator through the laptop webcam or imported photo files.
 - **Expo rule:** before touching any Expo / React Native API, read the SDK 58
   versioned docs (`https://docs.expo.dev/versions/v58.0.0/`). Install packages
   only with `npx expo install`.
@@ -85,7 +86,8 @@ person running it does 7–9.
   - P1.4 Dev-only OCR debug panel (`__DEV__`) on Confirm showing raw OCR lines and the parsed name/number.
   - P1.5 Add `eas.json` with `development`, `preview` and `production` profiles (development uses a dev client).
   - P1.6 Extract the OCR-parsing checks from `scripts/smoke-test.ts` into an offline fixture script `scripts/ocr-fixtures.ts` covering: promo numbers without a slash, `TG12/TG30`, leading zeros (`004/102`), stage/HP lines, "Illus." lines.
-- **outputs:** updated scan flow, `eas.json`, `scripts/ocr-fixtures.ts`
+  - P1.7 "Import photo" on Scan (`expo-image-picker`): an imported image follows the same OCR → manual entry → Confirm path as a camera photo. This lets the benchmark run from photo files on the emulator and web.
+- **outputs:** updated scan flow, photo import, `eas.json`, `scripts/ocr-fixtures.ts`
 - **acceptance_criteria:**
   - AC-P1.1 Given camera permission was never asked, Scan shows an explanation and "Allow camera access". (C1)
   - AC-P1.2 Given permission is permanently denied, Scan shows "Open Settings" and "Enter card manually", and both work. (C1, E3)
@@ -95,11 +97,12 @@ person running it does 7–9.
   - AC-P1.6 When OCR is unavailable, finds no text, or throws, the user lands on Manual entry with the photo shown and can continue to Confirm. No path relies on `Alert` alone. (C2, E2)
   - AC-P1.7 Photo URIs never appear in route params or the URL.
   - AC-P1.8 The OCR debug panel renders only in `__DEV__` builds.
-  - AC-P1.9 The `development` profile in `eas.json` produces a working dev client. (needs human)
+  - AC-P1.9 A development build runs on the Android emulator (`npx expo run:android`) and OCR reads a card through the webcam or an imported photo. (needs human)
   - AC-P1.10 `scripts/ocr-fixtures.ts` covers promo, TG, leading zeros, stage/HP and Illus. lines and passes offline. (G4)
+  - AC-P1.11 Scan offers "Import photo"; an imported image follows the same path as a camera photo, including manual entry when OCR fails, on Android and web. (E2)
 - **definition_of_done:** the shared Definition of Done, plus:
-  - Dev client tested on 1 iOS + 1 Android device and recorded in `docs/status.md` (needs human).
-- **needs_human:** Build a development client (`npx eas-cli@latest build --profile development`) and test on one iOS and one Android device; record results in `docs/status.md`.
+  - Development build tested on the Android emulator and recorded in `docs/status.md` (needs human). iOS deferred.
+- **needs_human:** Install Android Studio with an emulator (Google Play image), run `npx expo run:android`, scan a few cards with the webcam or imported photos, and record results in `docs/status.md`. iOS deferred.
 
 ## P2 · Identification and pricing
 
@@ -156,8 +159,8 @@ person running it does 7–9.
   - AC-P3.8 Scan, Manual entry, Confirm and Result behave as before (E1 and E2 still pass).
 - **definition_of_done:** the shared Definition of Done, plus:
   - Layout decision (r1 / r2) recorded in `docs/status.md`.
-  - Device check by a human.
-- **needs_human:** Choose `layout`; supply licensed hero art and the card-back asset; check on a device.
+  - Check on the Android emulator and web by a human.
+- **needs_human:** Choose `layout`; supply licensed hero art and the card-back asset; check on the Android emulator and web.
 
 ## P4 · MVP hardening
 
@@ -173,7 +176,7 @@ person running it does 7–9.
   - P4.5 Performance: memoised list rows, stable keys, no re-render loops on focus refetch.
   - P4.6 Write `docs/photo-test-matrix.md`: glare, blur, angle, dark/busy backgrounds, sleeves, foil; expected outcome for each.
   - P4.7 Add `tsx` as a dev dependency and an `npm test` script. Set up `jest-expo` + React Native Testing Library with recorded TCGdex fixtures in `tests/fixtures/`; write unit tests U1–U5 and component tests C1–C5 from `docs/acceptance-tests.md` (C5 once P5 exists).
-  - P4.8 Add Maestro flows E1–E9 from `docs/acceptance-tests.md` in `.maestro/` (E8 once P5 exists), runnable against a development build.
+  - P4.8 Add Maestro flows E1–E9 from `docs/acceptance-tests.md` in `.maestro/` (E8 once P5 exists), runnable against a development build on the Android emulator.
 - **outputs:** shared state components, hardened services, test matrix doc, unit/component tests, Maestro flows
 - **acceptance_criteria:**
   - AC-P4.1 Home, Confirm, Result and Search each have loading, empty, error and retry states built from shared components. (C1–C4)
@@ -183,11 +186,11 @@ person running it does 7–9.
   - AC-P4.5 Every pressable has an accessibility label and role; touch targets are ≥ 44 pt; text at the largest size does not clip. (Q2)
   - AC-P4.6 No unhandled promise rejections remain in storage writes or screen effects.
   - AC-P4.7 `npm test` runs U1–U5 and C1–C4 offline and passes; `src/services` and `src/utils` coverage ≥ 80 %.
-  - AC-P4.8 Maestro flows E1–E7 and E9 pass on an iOS simulator and an Android emulator.
+  - AC-P4.8 Maestro flows E1–E7 and E9 pass on the Android emulator; E2, E4, E6 and E7 also work in Chrome.
   - AC-P4.9 `docs/photo-test-matrix.md` lists each condition with its expected outcome.
 - **definition_of_done:** the shared Definition of Done, plus:
-  - Photo test matrix run on devices and results recorded (needs human).
-- **needs_human:** Run the photo test matrix on devices and record results.
+  - Photo test matrix run on the Android emulator with imported photos and the webcam, and results recorded (needs human).
+- **needs_human:** Run the photo test matrix on the Android emulator (imported photos and webcam) and record results.
 
 ## P5 · Collection
 
@@ -236,5 +239,5 @@ person running it does 7–9.
   - AC-P6.6 Acceptance layers 1–3 are signed off and the 50-card benchmark sheet is ready.
 - **definition_of_done:** the shared Definition of Done, plus:
   - Acceptance layers 4–5 signed off (needs human).
-  - Store submission done (needs human).
-- **needs_human:** Run acceptance layers 4–5 (real-card benchmark, device, price and quality checks) and sign off; Apple and Google developer accounts, signing credentials, store listing, `eas submit`.
+  - Store submission done, or the release APK shared directly (needs human).
+- **needs_human:** Run acceptance layers 4–5 (real-card benchmark, emulator, price and quality checks) and sign off. Store publishing costs money (Google Play one-time registration fee, Apple yearly fee) and is optional: until then, share the Android release APK directly for free. iOS builds wait for a Mac or an Apple Developer account.

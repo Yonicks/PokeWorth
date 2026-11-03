@@ -68,7 +68,7 @@ No gate failed because of P1 changes, so no fixes were made during the gate run.
 
 ### Human-only items
 
-- **needs_human:** build a development client (`npx eas-cli@latest build --profile development`), then test on one iOS and one Android device and record the results here. Not done yet.
+- **needs_human:** install Android Studio with an emulator (Google Play image), run `npx expo run:android`, test with the webcam and imported photos, and record the results here. iOS is deferred (no Mac, no paid Apple account). Not done yet.
 - Before the first build: the account owner must choose `ios.bundleIdentifier` and `android.package`. They are not in `app.json`, and no values were made up. The first build or `eas init` also needs an Expo account login and project linking (`extra.eas.projectId`).
 - On-device checks still to do: permission states (including Open Settings), the guide and controls on short and notched screens, OCR through the dev client, the manual-entry fallback, and the `__DEV__` debug panel.
 

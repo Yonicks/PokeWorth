@@ -17,6 +17,7 @@ branch: the workflow edits the working tree but never commits or pushes.
 
 - **Context:** `docs/dev-phases.md` (this file), `pokeworth-high-level-plan-20-10-2026.md`
   (HLD), `design/home-spec.md` (Home UI spec), `AGENTS.md` (Expo rules).
+- **Final approval:** `docs/acceptance-tests.md` (5 layers). Phases add the tests it lists; P6 runs the sign-off.
 - **Gates** (must pass before a phase is done):
   - `npx tsc --noEmit`
   - `npx expo lint`
@@ -28,6 +29,24 @@ branch: the workflow edits the working tree but never commits or pushes.
 - **Prices:** never invent one. Missing data shows an explicit "No price available".
 - **Demo data** lives only in `src/demo/` and never mixes with real storage.
 - **needs_human** items cannot be done by agents; the workflow lists them in its report.
+- **Acceptance criteria** are numbered `AC-Pn.k` and name the acceptance test that proves them (IDs from `docs/acceptance-tests.md`) where one exists.
+
+---
+
+## Definition of Done (every phase)
+
+A phase is done only when all of these hold. The workflow checks 1–6; the
+person running it does 7–9.
+
+1. Every task is done, or marked blocked with the reason and a follow-up.
+2. Every acceptance criterion (`AC-Pn.k`) is marked **met**, **not met** or **needs human** in `docs/status.md`.
+3. Gates pass: `npx tsc --noEmit`, `npx expo lint`, `scripts/ocr-fixtures.ts`, `scripts/smoke-test.ts` (or noted offline), and `npm test` once it exists.
+4. Review left no confirmed high or medium finding unfixed.
+5. No new lint suppressions, untyped `any`, or unexplained TODOs.
+6. Docs match the code: `docs/status.md`, plus `docs/dev-phases.md` or `docs/acceptance-tests.md` when scope or tests changed.
+7. The HLD artifact (and the web prototype if behaviour it mirrors changed) is republished.
+8. Work is committed on the phase's feature branch; nothing is pushed or merged without approval.
+9. needs_human items are listed with who will do them.
 
 ---
 
@@ -43,7 +62,14 @@ branch: the workflow edits the working tree but never commits or pushes.
   - P0.3 List risky spots: unhandled errors, missing loading/empty states, hard-coded values, TODOs.
   - P0.4 Write the findings to `docs/status.md` (create it), grouped by phase P1–P6.
 - **outputs:** `docs/status.md`
-- **done_when:** `docs/status.md` exists, each HLD feature has a status and file references, gate results are recorded.
+- **acceptance_criteria:**
+  - AC-P0.1 docs/status.md lists every gate with pass/fail and an output excerpt.
+  - AC-P0.2 Each of the 9 HLD MVP features has a status (built / partial / missing) and at least one file reference.
+  - AC-P0.3 Each risk is filed under a phase P1–P6 with a `file:line` reference.
+  - AC-P0.4 No file under `src/` changed.
+- **definition_of_done:** the shared Definition of Done, plus:
+  - `docs/status.md` committed.
+  - HLD artifact shows the audit statuses.
 - **needs_human:** none
 
 ## P1 · Scan reliability
@@ -60,7 +86,19 @@ branch: the workflow edits the working tree but never commits or pushes.
   - P1.5 Add `eas.json` with `development`, `preview` and `production` profiles (development uses a dev client).
   - P1.6 Extract the OCR-parsing checks from `scripts/smoke-test.ts` into an offline fixture script `scripts/ocr-fixtures.ts` covering: promo numbers without a slash, `TG12/TG30`, leading zeros (`004/102`), stage/HP lines, "Illus." lines.
 - **outputs:** updated scan flow, `eas.json`, `scripts/ocr-fixtures.ts`
-- **done_when:** gates pass; `npx tsx scripts/ocr-fixtures.ts` passes; every scan failure path ends on a usable screen.
+- **acceptance_criteria:**
+  - AC-P1.1 Given camera permission was never asked, Scan shows an explanation and "Allow camera access". (C1)
+  - AC-P1.2 Given permission is permanently denied, Scan shows "Open Settings" and "Enter card manually", and both work. (C1, E3)
+  - AC-P1.3 Every Scan state has a visible Cancel that leaves the screen on iOS, Android and web.
+  - AC-P1.4 The 63:88 frame stays fully on screen at 375×667 and 430×932; capture controls sit above the system navigation area.
+  - AC-P1.5 A second shutter tap during a capture does nothing.
+  - AC-P1.6 When OCR is unavailable, finds no text, or throws, the user lands on Manual entry with the photo shown and can continue to Confirm. No path relies on `Alert` alone. (C2, E2)
+  - AC-P1.7 Photo URIs never appear in route params or the URL.
+  - AC-P1.8 The OCR debug panel renders only in `__DEV__` builds.
+  - AC-P1.9 The `development` profile in `eas.json` produces a working dev client. (needs human)
+  - AC-P1.10 `scripts/ocr-fixtures.ts` covers promo, TG, leading zeros, stage/HP and Illus. lines and passes offline. (G4)
+- **definition_of_done:** the shared Definition of Done, plus:
+  - Dev client tested on 1 iOS + 1 Android device and recorded in `docs/status.md` (needs human).
 - **needs_human:** Build a development client (`npx eas-cli@latest build --profile development`) and test on one iOS and one Android device; record results in `docs/status.md`.
 
 ## P2 · Identification and pricing
@@ -76,7 +114,18 @@ branch: the workflow edits the working tree but never commits or pushes.
   - P2.4 Manual Search screen using `useCardSearch` (name or `number/total`), reachable from Home. Results open Result for the chosen card.
   - P2.5 Matcher edge cases with fixtures in `scripts/ocr-fixtures.ts`: same name across sets, set-size disambiguation, names with `ex`/`V`/`VMAX` suffixes.
 - **outputs:** updated Confirm/Result, Search route, more fixtures
-- **done_when:** gates and fixtures pass; no code path renders a price without provider and currency.
+- **acceptance_criteria:**
+  - AC-P2.1 When two or more candidates exist, Confirm shows 2–5 of them, each with image (or a plain no-image box), set name (not the id), number and match reasons.
+  - AC-P2.2 Candidates that tie on name and number are separated by set size: for a `4/102` read, Base Set Charizard (`base1-4`) ranks first. (U3)
+  - AC-P2.3 A match auto-advances only when `isConfidentMatch` is true (≥ 0.85 and ≥ 0.15 ahead); otherwise the user must pick. (B3, C3)
+  - AC-P2.4 For a card with more than one printing, a variant picker appears before any price. (C4, E5)
+  - AC-P2.5 Every displayed price shows provider, variant, currency and date; a missing currency shows "currency unknown" and a missing date shows "date unknown". (U4)
+  - AC-P2.6 A card with no price data shows "No price available" and no number. (E6)
+  - AC-P2.7 Cardmarket base prices are not labelled "Normal" on holo-only cards; holo and reverse holo are separate rows. (U4)
+  - AC-P2.8 Search finds a card by name and by `number/total` (e.g. `4/102`); a result opens Result. (E4)
+  - AC-P2.9 Fixtures cover same name across sets, set-size tie-breaks and `ex`/`V`/`VMAX` names, and pass offline. (G4)
+- **definition_of_done:** the shared Definition of Done, plus:
+  - 10-card price spot-check recorded in `docs/status.md` (needs human).
 - **needs_human:** Spot-check 10 real cards' prices against TCGplayer/Cardmarket websites.
 
 ## P3 · Home redesign
@@ -96,7 +145,18 @@ branch: the workflow edits the working tree but never commits or pushes.
   - P3.7 Dark-only Home with a light status bar and correct safe areas; scrollable content above the tab bar.
   - P3.8 Missing art (spec §5.2 A3–A6): marked placeholder layers only. Never substitute other artwork.
 - **outputs:** tab navigation, Home components, tokens, demo module
-- **done_when:** gates pass; reviewer compares a web screenshot (`npx expo start --web`) against the chosen reference and finds no section missing; no screen outside Home changed behaviour.
+- **acceptance_criteria:**
+  - AC-P3.1 All colours, type sizes, spacing and radii on Home come from `src/theme/tokens.ts`; Home components contain no hex literals.
+  - AC-P3.2 Home matches the chosen reference section by section (spec §3 for r1, §4 for r2); the reviewer compares a web screenshot and finds no section missing.
+  - AC-P3.3 Tabs (Home, Collection, Search, plus Stats for r2) switch without losing state; Scan, Confirm and Result open above the tabs and Back returns to the tab.
+  - AC-P3.4 Scan Card, Search Manually, See All and the Collection entry point each open the right route.
+  - AC-P3.5 Demo recent scans appear only when `__DEV__` and history is empty, carry a visible "Demo" marker, and never mix with stored scans.
+  - AC-P3.6 Missing artwork shows marked placeholders; no unrelated or unlicensed artwork is added.
+  - AC-P3.7 Home is dark in both system themes with a light status bar; nothing is hidden under the notch or tab bar at 375 and 430 pt widths.
+  - AC-P3.8 Scan, Manual entry, Confirm and Result behave as before (E1 and E2 still pass).
+- **definition_of_done:** the shared Definition of Done, plus:
+  - Layout decision (r1 / r2) recorded in `docs/status.md`.
+  - Device check by a human.
 - **needs_human:** Choose `layout`; supply licensed hero art and the card-back asset; check on a device.
 
 ## P4 · MVP hardening
@@ -112,8 +172,21 @@ branch: the workflow edits the working tree but never commits or pushes.
   - P4.4 Accessibility: labels and roles on all pressables, 44 pt touch targets, Dynamic Type does not clip text.
   - P4.5 Performance: memoised list rows, stable keys, no re-render loops on focus refetch.
   - P4.6 Write `docs/photo-test-matrix.md`: glare, blur, angle, dark/busy backgrounds, sleeves, foil; expected outcome for each.
-- **outputs:** shared state components, hardened services, test matrix doc
-- **done_when:** gates pass; airplane-mode run shows a friendly error with retry on each screen (reviewer reasons through each path in code).
+  - P4.7 Add `tsx` as a dev dependency and an `npm test` script. Set up `jest-expo` + React Native Testing Library with recorded TCGdex fixtures in `tests/fixtures/`; write unit tests U1–U5 and component tests C1–C5 from `docs/acceptance-tests.md` (C5 once P5 exists).
+  - P4.8 Add Maestro flows E1–E9 from `docs/acceptance-tests.md` in `.maestro/` (E8 once P5 exists), runnable against a development build.
+- **outputs:** shared state components, hardened services, test matrix doc, unit/component tests, Maestro flows
+- **acceptance_criteria:**
+  - AC-P4.1 Home, Confirm, Result and Search each have loading, empty, error and retry states built from shared components. (C1–C4)
+  - AC-P4.2 TCGdex requests time out (about 10 s) and errors are typed (offline, not found, server, bad response); each message matches its cause.
+  - AC-P4.3 In airplane mode every network screen shows a friendly error with Retry, and Retry works after reconnecting. (E7)
+  - AC-P4.4 All card images use `expo-image` with caching; list thumbnails use the `low` quality image.
+  - AC-P4.5 Every pressable has an accessibility label and role; touch targets are ≥ 44 pt; text at the largest size does not clip. (Q2)
+  - AC-P4.6 No unhandled promise rejections remain in storage writes or screen effects.
+  - AC-P4.7 `npm test` runs U1–U5 and C1–C4 offline and passes; `src/services` and `src/utils` coverage ≥ 80 %.
+  - AC-P4.8 Maestro flows E1–E7 and E9 pass on an iOS simulator and an Android emulator.
+  - AC-P4.9 `docs/photo-test-matrix.md` lists each condition with its expected outcome.
+- **definition_of_done:** the shared Definition of Done, plus:
+  - Photo test matrix run on devices and results recorded (needs human).
 - **needs_human:** Run the photo test matrix on devices and record results.
 
 ## P5 · Collection
@@ -129,7 +202,15 @@ branch: the workflow edits the working tree but never commits or pushes.
   - P5.4 Refresh prices for collection cards on pull-to-refresh (respect TanStack Query cache).
   - P5.5 (r2 only) Stats tab: total value, value by set, most valuable cards.
 - **outputs:** collection storage, Collection (and Stats) screens
-- **done_when:** gates pass; totals never include unpriced cards silently; data survives app restart (reasoned in code).
+- **acceptance_criteria:**
+  - AC-P5.1 Collection storage is versioned (`pokeworth.collection.v1`); corrupt data gives an empty collection, not a crash. (U5)
+  - AC-P5.2 From Result the user adds a card with a chosen variant and quantity; adding the same card and variant again increases the quantity.
+  - AC-P5.3 Collection lists each entry with quantity and value; quantities can be changed and entries removed.
+  - AC-P5.4 Total value sums priced cards only and states how many cards were left out and why. (C5)
+  - AC-P5.5 Pull-to-refresh updates prices and their dates; cached prices are reused within `staleTime`.
+  - AC-P5.6 The collection survives an app restart. (E8)
+  - AC-P5.7 (r2) Stats shows total, value by set and top cards, and its total equals the Collection total.
+- **definition_of_done:** the shared Definition of Done.
 - **needs_human:** none
 
 ## P6 · Release preparation
@@ -144,6 +225,16 @@ branch: the workflow edits the working tree but never commits or pushes.
   - P6.3 About screen: TCGdex attribution, "prices are estimates" disclaimer, "not affiliated with Nintendo / The Pokémon Company".
   - P6.4 Remove or gate all demo data and debug panels from production builds.
   - P6.5 `docs/release-checklist.md`: store listing, screenshots, privacy answers (no account, photos stay on device), version bump steps.
+  - P6.6 Run layers 1–3 of `docs/acceptance-tests.md` and record results in its sign-off table; prepare `docs/benchmark/results.csv` with the 50-card template for layer 4.
 - **outputs:** release-ready config and checklist
-- **done_when:** gates pass; `npx expo-doctor` reports no problems; no demo/debug code reachable in production.
-- **needs_human:** Apple and Google developer accounts, signing credentials, store listing, `eas submit`.
+- **acceptance_criteria:**
+  - AC-P6.1 `app.json` has the PokeWorth name, final icons, navy splash, dark style, bundle identifier, Android package and camera permission text.
+  - AC-P6.2 `eas.json` profiles map to update channels, a runtime version policy is set, and `npx expo-doctor` is clean. (G3)
+  - AC-P6.3 An About screen, reachable from Settings, shows TCGdex attribution, "prices are estimates" and "not affiliated with Nintendo / The Pokémon Company".
+  - AC-P6.4 A production build has no reachable demo data, OCR debug panel or dev menu. (Q4)
+  - AC-P6.5 `docs/release-checklist.md` covers store listing, screenshots, privacy answers and version bumps.
+  - AC-P6.6 Acceptance layers 1–3 are signed off and the 50-card benchmark sheet is ready.
+- **definition_of_done:** the shared Definition of Done, plus:
+  - Acceptance layers 4–5 signed off (needs human).
+  - Store submission done (needs human).
+- **needs_human:** Run acceptance layers 4–5 (real-card benchmark, device, price and quality checks) and sign off; Apple and Google developer accounts, signing credentials, store listing, `eas submit`.

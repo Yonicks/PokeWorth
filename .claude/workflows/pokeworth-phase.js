@@ -120,9 +120,24 @@ const GATE_SCHEMA = {
       },
     },
     allPassed: { type: 'boolean' },
+    acceptance: {
+      type: 'array',
+      description: 'one entry per AC-Pn.k of this phase',
+      items: {
+        type: 'object',
+        properties: {
+          id: { type: 'string' },
+          result: { type: 'string', enum: ['met', 'not_met', 'needs_human'] },
+          evidence: { type: 'string', description: 'file:line, command output, or why a human is needed' },
+        },
+        required: ['id', 'result', 'evidence'],
+      },
+    },
+    dodMet: { type: 'boolean', description: 'shared Definition of Done items 1-6 all hold' },
+    filesChanged: { type: 'array', items: { type: 'string' }, description: 'from git status, so files created during review are included' },
     statusDocUpdated: { type: 'boolean' },
   },
-  required: ['gates', 'allPassed', 'statusDocUpdated'],
+  required: ['gates', 'allPassed', 'acceptance', 'dodMet', 'filesChanged', 'statusDocUpdated'],
 }
 
 // ---------------- Plan ----------------
@@ -135,7 +150,7 @@ ${RULES}
 2. Check its depends_on. If a dependency is clearly not met in the code, or a required decision is missing, set blocked=true with the reason.
 3. Read every file listed under inputs, and any file you need to judge the current state.
 4. Return the phase's tasks in spec order. Keep the spec ids. Split a task (P2.3a, P2.3b) only if it is too large for one focused agent.
-   For each task give the files it will touch, concrete steps, and checkable acceptance criteria taken from the spec.
+   For each task give the files it will touch, concrete steps, and the acceptance criteria it serves: copy the matching AC-${PHASE}.k lines from the spec's acceptance_criteria, ids included.
    Set alreadyDone=true when the current code already meets the task's acceptance.
 5. Copy the spec's needs_human items into needsHuman.`,
   { label: `plan ${PHASE}`, schema: PLAN_SCHEMA },
@@ -189,7 +204,7 @@ const changed = [...new Set(built.flatMap(b => b.filesChanged))]
 // ---------------- Review ----------------
 const LENSES = [
   { key: 'correctness', ask: 'bugs: crashes, wrong logic, unhandled promise rejections, race conditions, stale state, wrong navigation params, broken edge cases' },
-  { key: 'spec', ask: `whether each task's acceptance criteria and the phase's done_when in docs/dev-phases.md are actually met${PHASE === 'P3' ? '; compare the Home UI against design/home-spec.md and the chosen reference image in design/v1/reference/' : ''}` },
+  { key: 'spec', ask: `whether every acceptance criterion (AC-${PHASE}.k) of the phase and items 1-6 of the shared "Definition of Done" in docs/dev-phases.md are actually met; report each unmet one as a finding${PHASE === 'P3' ? '; compare the Home UI against design/home-spec.md and the chosen reference image in design/v1/reference/' : ''}` },
   { key: 'platform', ask: 'Expo SDK 58 / React Native API misuse (check the versioned docs), iOS vs Android vs web differences, safe areas, accessibility labels and touch targets, performance of lists and images' },
 ]
 const reviewLog = []
@@ -235,7 +250,10 @@ const gate = await agent(
 ${RULES}
 1. Run: npx tsc --noEmit ; npx expo lint ; npx tsx scripts/smoke-test.ts (network; if it fails only for lack of network, mark it passed=false with excerpt "offline") ; and npx tsx scripts/ocr-fixtures.ts if that file exists.
 2. If a gate fails because of this phase's changes and the fix is small and obvious, fix it and run the gate again. Do not refactor.
-3. Update docs/status.md (create it if missing): add or replace a "## ${PHASE}" section with today's date (use the shell "date" command), the task results below, gate results, and the human-only items.
+3. Check every acceptance criterion AC-${PHASE}.k in docs/dev-phases.md against the code and gate output: met, not_met, or needs_human (device, real cards, accounts). Give evidence for each.
+4. Check items 1-6 of the shared "Definition of Done" and set dodMet.
+5. List filesChanged from "git status --short" (include files created during review).
+6. Update docs/status.md (create it if missing): add or replace a "## ${PHASE}" section with today's date (use the shell "date" command), the task results below, gate results, an acceptance-criteria table (id, result, evidence), the Definition of Done check, and the human-only items.
 Task results:
 ${built.map(b => `- ${b.id}: ${b.status}. ${b.notes}`).join('\n') || '- none built'}
 Already done before this run: ${skippedDone.join(', ') || 'none'}
@@ -253,5 +271,8 @@ return {
   review: reviewLog.map(r => ({ round: r.round, confirmed: r.confirmed, notFixed: r.fix ? r.fix.notFixed : [] })),
   gates: gate ? gate.gates : 'gate agent returned nothing',
   allGatesPassed: gate ? gate.allPassed : false,
+  acceptance: gate ? gate.acceptance : [],
+  definitionOfDoneMet: gate ? gate.dodMet : false,
+  filesChangedPerGit: gate ? gate.filesChanged : [],
   needsHuman: plan.needsHuman,
 }

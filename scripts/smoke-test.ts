@@ -6,15 +6,14 @@ import { parseOcrLines, rankCandidates } from '../src/services/card-matcher.serv
 import { extractDisplayPrices, getCard, searchCardsByName } from '../src/services/tcgdex.service';
 
 async function main() {
-  // 1. Simulated OCR lines from a Base Set Charizard photo.
+  // 1. Simulated OCR lines from a Base Set Charizard photo. Parse assertions
+  //    live in scripts/ocr-fixtures.ts (offline); this only feeds the network steps.
   const parsed = parseOcrLines([
     'STAGE 2', 'Charizard', 'HP 120', 'Energy Burn', 'Fire Spin',
     'weakness', 'retreat cost', 'Illus. Mitsuhiro Arita', '4/102',
   ]);
   console.log('parsed:', JSON.stringify(parsed, null, 0));
-  if (parsed.name !== 'Charizard' || parsed.localId !== '4' || parsed.setTotal !== 102) {
-    throw new Error('OCR parsing failed');
-  }
+  if (!parsed.name) throw new Error('No name parsed; run scripts/ocr-fixtures.ts');
 
   // 2. Catalog search + ranking.
   const briefs = await searchCardsByName(parsed.name);

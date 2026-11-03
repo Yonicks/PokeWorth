@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  AppState,
   Pressable,
   StyleSheet,
   Text,
@@ -15,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { setLastPhoto } from '@/services/capture-store';
 import { parseOcrLines } from '@/services/card-matcher.service';
 import { isOcrAvailable, recognizeCardText } from '@/services/ocr.service';
+import { pickCardPhoto } from '@/services/photo-import.service';
 
 // Standard trading card ratio (63mm x 88mm).
 const CARD_RATIO = 63 / 88;
@@ -22,7 +24,7 @@ const CARD_RATIO = 63 / 88;
 export default function ScanScreen() {
   const router = useRouter();
   const cameraRef = useRef<CameraView>(null);
-  const [permission, requestPermission] = useCameraPermissions();
+  const [permission, requestPermission, getPermission] = useCameraPermissions();
   const [busy, setBusy] = useState(false);
   // Shown in-screen when Settings cannot be opened (Alert does nothing on web).
   const [settingsFailed, setSettingsFailed] = useState(false);
@@ -39,6 +41,15 @@ export default function ScanScreen() {
       mountedRef.current = false;
     };
   }, []);
+
+  // Coming back from "Open Settings" does not remount this screen, so re-read
+  // the permission whenever the app becomes active again.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') getPermission().catch(() => {});
+    });
+    return () => sub.remove();
+  }, [getPermission]);
 
   // The header is hidden for this screen and web has no hardware back,
   // so every state needs its own way out.
@@ -58,6 +69,92 @@ export default function ScanScreen() {
       if (mountedRef.current) setSettingsFailed(true);
     }
   };
+
+  // Camera photos and imported photos share this path so they cannot drift apart.
+  // Only the short store id goes into route params, never the URI itself.
+  const processPhoto = async (photoUri: string, photoId: string) => {
+    if (!isOcrAvailable()) {
+      router.replace({
+        pathname: '/manual-entry',
+        params: { photoId, reason: 'ocr-unavailable' },
+      });
+      return;
+    }
+
+    const ocr = await recognizeCardText(photoUri);
+    if (!mountedRef.current) return;
+    const parsed = parseOcrLines(ocr.lines);
+
+    if (!parsed.name && !parsed.localId) {
+      router.replace({
+        pathname: '/manual-entry',
+        params: { photoId, reason: 'no-text', lines: JSON.stringify(parsed.rawLines) },
+      });
+      return;
+    }
+
+    router.replace({
+      pathname: '/confirm',
+      params: {
+        name: parsed.name ?? '',
+        number: parsed.localId ?? '',
+        total: parsed.setTotal ? String(parsed.setTotal) : '',
+        lines: JSON.stringify(parsed.rawLines),
+        photoId,
+      },
+    });
+  };
+
+  // Runs one capture or import. getPhotoUri resolves null when the user cancels,
+  // which clears busy and stays on Scan.
+  const runScan = async (getPhotoUri: () => Promise<string | null>) => {
+    if (busyRef.current) return;
+    busyRef.current = true;
+    setBusy(true);
+    // Kept so every failure path below can still show the photo on manual entry.
+    let photoId = '';
+    try {
+      const photoUri = await getPhotoUri();
+      if (!mountedRef.current || !photoUri) return;
+      photoId = setLastPhoto(photoUri);
+      await processPhoto(photoUri, photoId);
+    } catch (e) {
+      // Raw error text is for developers only; manual entry shows friendly copy.
+      if (__DEV__) console.warn('Scan failed', e);
+      if (!mountedRef.current) return;
+      router.replace({
+        pathname: '/manual-entry',
+        params: photoId ? { photoId, reason: 'error' } : { reason: 'error' },
+      });
+    } finally {
+      busyRef.current = false;
+      if (mountedRef.current) setBusy(false);
+    }
+  };
+
+  const capture = () => {
+    if (!cameraRef.current) return;
+    return runScan(async () => {
+      const photo = await cameraRef.current?.takePictureAsync({ quality: 0.8 });
+      if (!photo?.uri) throw new Error('No photo captured');
+      return photo.uri;
+    });
+  };
+
+  // Importing needs no camera, so it is offered in the permission states too.
+  const importPhoto = () => runScan(pickCardPhoto);
+
+  const importButton = (
+    <Pressable
+      style={[styles.secondaryButton, busy && styles.disabled]}
+      onPress={importPhoto}
+      disabled={busy}
+      accessibilityRole="button"
+      accessibilityLabel="Import card photo"
+      accessibilityState={{ disabled: busy, busy }}>
+      <Text style={styles.secondaryButtonText}>Import photo</Text>
+    </Pressable>
+  );
 
   const permissionPadding = {
     paddingTop: insets.top + 24,
@@ -109,6 +206,13 @@ export default function ScanScreen() {
             )}
           </>
         )}
+        {importButton}
+        {busy && (
+          <View style={styles.busyRow}>
+            <ActivityIndicator />
+            <Text style={styles.permissionText}>Reading card…</Text>
+          </View>
+        )}
         {permission.status === 'denied' && (
           <Pressable style={styles.secondaryButton} onPress={enterManually}>
             <Text style={styles.secondaryButtonText}>Enter card manually</Text>
@@ -120,65 +224,6 @@ export default function ScanScreen() {
       </View>
     );
   }
-
-  const capture = async () => {
-    if (busyRef.current || !cameraRef.current) return;
-    busyRef.current = true;
-    setBusy(true);
-    // Kept so every failure path below can still show the photo on manual entry.
-    // Only the short store id goes into route params, never the URI itself.
-    let photoUri = '';
-    let photoId = '';
-    try {
-      const photo = await cameraRef.current.takePictureAsync({ quality: 0.8 });
-      if (!mountedRef.current) return;
-      if (!photo?.uri) throw new Error('No photo captured');
-      photoUri = photo.uri;
-      photoId = setLastPhoto(photoUri);
-
-      if (!isOcrAvailable()) {
-        router.replace({
-          pathname: '/manual-entry',
-          params: { photoId, reason: 'ocr-unavailable' },
-        });
-        return;
-      }
-
-      const ocr = await recognizeCardText(photoUri);
-      if (!mountedRef.current) return;
-      const parsed = parseOcrLines(ocr.lines);
-
-      if (!parsed.name && !parsed.localId) {
-        router.replace({
-          pathname: '/manual-entry',
-          params: { photoId, reason: 'no-text', lines: JSON.stringify(parsed.rawLines) },
-        });
-        return;
-      }
-
-      router.replace({
-        pathname: '/confirm',
-        params: {
-          name: parsed.name ?? '',
-          number: parsed.localId ?? '',
-          total: parsed.setTotal ? String(parsed.setTotal) : '',
-          lines: JSON.stringify(parsed.rawLines),
-          photoId,
-        },
-      });
-    } catch (e) {
-      // Raw error text is for developers only; manual entry shows friendly copy.
-      if (__DEV__) console.warn('Scan failed', e);
-      if (!mountedRef.current) return;
-      router.replace({
-        pathname: '/manual-entry',
-        params: photoId ? { photoId, reason: 'error' } : { reason: 'error' },
-      });
-    } finally {
-      busyRef.current = false;
-      if (mountedRef.current) setBusy(false);
-    }
-  };
 
   // Fit the guide by width and height so it never crowds the controls on short screens.
   const guideWidth = Math.min(screenWidth * 0.75, screenHeight * 0.55 * CARD_RATIO);
@@ -212,7 +257,15 @@ export default function ScanScreen() {
           accessibilityState={{ disabled: busy, busy }}>
           {busy ? <ActivityIndicator color="#000" /> : <View style={styles.shutterInner} />}
         </Pressable>
-        <View style={styles.cancelButton} />
+        <Pressable
+          style={[styles.cancelButton, busy && styles.disabled]}
+          onPress={importPhoto}
+          disabled={busy}
+          accessibilityRole="button"
+          accessibilityLabel="Import card photo"
+          accessibilityState={{ disabled: busy, busy }}>
+          <Text style={styles.cancelText}>Import photo</Text>
+        </Pressable>
       </View>
     </View>
   );
@@ -232,6 +285,8 @@ const styles = StyleSheet.create({
   primaryButtonText: { color: '#fff', fontWeight: '600' },
   secondaryButton: { paddingHorizontal: 20, paddingVertical: 10 },
   secondaryButtonText: { color: '#208AEF', fontSize: 16, fontWeight: '600' },
+  disabled: { opacity: 0.5 },
+  busyRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   overlay: {
     position: 'absolute',
     top: 0,
@@ -257,7 +312,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cancelButton: { width: 80, minHeight: 48, alignItems: 'center', justifyContent: 'center' },
-  cancelText: { color: '#fff', fontSize: 16 },
+  cancelText: { color: '#fff', fontSize: 16, textAlign: 'center' },
   shutter: {
     width: 74,
     height: 74,

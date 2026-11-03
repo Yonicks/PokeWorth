@@ -85,7 +85,7 @@ export default function ManualEntryScreen() {
             source={{ uri: photoUri }}
             style={styles.photo}
             contentFit="contain"
-            accessibilityLabel="Photo you took of the card"
+            accessibilityLabel="Card photo"
           />
         ) : null}
 

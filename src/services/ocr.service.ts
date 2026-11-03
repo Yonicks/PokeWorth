@@ -7,6 +7,8 @@
  * letting the user fall back to manual search.
  */
 
+import { requireOptionalNativeModule } from 'expo';
+
 export interface OcrResult {
   lines: string[];
   available: boolean;
@@ -21,6 +23,13 @@ let cachedModule: TextExtractorModule | null | undefined;
 
 function loadModule(): TextExtractorModule | null {
   if (cachedModule !== undefined) return cachedModule;
+  // Check for the native side first: requiring the package when it is missing
+  // throws inside the module system, and the dev error overlay reports that
+  // even though the catch below handles it.
+  if (!requireOptionalNativeModule('ExpoTextExtractor')) {
+    cachedModule = null;
+    return cachedModule;
+  }
   try {
     // Lazy require: importing at the top level crashes in Expo Go,
     // where the native module is not linked.

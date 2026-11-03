@@ -41,8 +41,8 @@ The esbuild cache failure happened on both P0 runs, so adding `tsx` as a dev dep
 
 ## P1
 
-- **Gate run date:** 2026-11-04 (from `date`)
-- **Phase result:** all six tasks done and all four gates pass. Nothing has been run on a device, simulator or in the browser preview. Nothing was committed, and no `eas build`/`submit`/`update` was run.
+- **Gate run date:** 2026-11-04 (from `date`; P1.7 gate run)
+- **Phase result:** all seven tasks are done (P1.1–P1.6 in earlier runs, P1.7 in this one) and all four gates pass. P1.7 was checked in the browser preview on web (see Human-only items). Apart from that web check, nothing has run on a device, an emulator or a simulator. Nothing was committed, and no `eas build`/`submit`/`update` was run. `design/hld/index.html` and `docs/dev-phases.md` were already modified in the working tree (HLD record and the free test plan). This run did not touch them.
 
 ### Task results
 
@@ -54,22 +54,61 @@ The esbuild cache failure happened on both P0 runs, so adding `tsx` as a dev dep
 | P1.4 OCR debug panel | done | `src/components/ocr-debug-panel.tsx` starts collapsed and shows the parsed name, number and set total ("none" when missing) plus numbered raw lines in a monospace font. Confirm renders it only under `__DEV__`, in the list header and on the "Nothing to search for" screen. Raw-line parsing has its own memo and now checks that the JSON is an array. |
 | P1.5 `eas.json` | done | `expo-dev-client ~58.0.18` was installed with `npx expo install`. `eas.json` sets `cli.version >= 16.0.0` and `appVersionSource: remote`. Profiles: `development` (dev client, internal), `preview` (internal) and `production` (`autoIncrement`), plus an empty `submit.production`. Update channels and `runtimeVersion` are left for P6.2. |
 | P1.6 Offline OCR fixtures | done | `scripts/ocr-fixtures.ts` has 11 parse fixtures and 2 `rankCandidates` fixtures. They cover Charizard 4/102, SWSH284, SM60, `SVP 085`, TG12/TG30, 004/102, stage/HP lines, Illus. lines, damage numbers, and a slash number winning over a promo token. `PROMO_NUMBER_RE` was added for known promo prefixes, and the wrong comment on `COLLECTOR_NUMBER_RE` was fixed. The smoke test no longer repeats the parse assertions. |
+| P1.7 Import photo | done | `expo-image-picker ~58.0.10` was installed with `npx expo install`. `app.json` adds its plugin with `photosPermission` ("PokeWorth uses your photos to identify Pokémon cards.") and `microphonePermission: false`. `cameraPermission` repeats the expo-camera string instead of `false`, because in the SDK 58 plugin `false` deletes `NSCameraUsageDescription` on iOS and blocks `android.permission.CAMERA` on Android, which would break expo-camera. The Android system photo picker (`PickVisualMedia`) needs no runtime permission. New `src/services/photo-import.service.ts` has `pickCardPhoto()`, which returns `assets[0].uri` or null on cancel (a `blob:` URL on web). In `scan.tsx`, `runScan(getPhotoUri)` holds the `busyRef`/`mountedRef` guards and the try/catch/finally, and `processPhoto(photoUri, photoId)` runs the OCR check, `recognizeCardText`, `parseOcrLines` and routing. Both `capture()` and `importPhoto()` go through them, so the paths cannot drift. "Import photo" (accessibilityLabel "Import card photo", disabled while busy) sits in the right-hand slot of the camera controls and in both camera-permission-not-granted states, which also show a spinner and "Reading card…" while busy. Only `photoId` goes into params. |
 
-### Gate results (2026-11-04 run)
+
+### Gate results (2026-11-04 run, after P1.7)
 
 | Gate | Result | Notes |
 |---|---|---|
 | `npx tsc --noEmit` | **PASS** (exit 0) | No output. |
 | `npx expo lint` | **PASS** (exit 0) | No output. |
-| `npx tsx scripts/smoke-test.ts` | **PASS** (exit 0, on retry) | The first run failed with `The package "@esbuild/win32-x64" could not be found`. This is the broken `npx` cache seen in P0, not the code. A rerun with a fresh cache (`npx --cache <scratchpad> -y tsx …`) passed: 126 catalog hits, `base4-4`/`base1-4`/`ex14-4` tied at 1.00 (a known P2 issue), three price rows, `Smoke test passed.` |
-| `npx tsx scripts/ocr-fixtures.ts` | **PASS** (exit 0, on retry) | The same esbuild cache failure happened first. With a fresh cache: `13/13 OCR fixtures passed.` |
+| `npx tsx scripts/ocr-fixtures.ts` | **PASS** (exit 0, on retry) | First run: `The package "@esbuild/win32-x64" could not be found`, from the broken `npx` cache seen in P0 (environment, not code). With a fresh cache (`npx --yes --cache <scratchpad> tsx …`) the output was `13/13 OCR fixtures passed.` |
+| `npx tsx scripts/smoke-test.ts` | **PASS** (exit 0, on retry) | Same esbuild cache failure first. With a fresh cache: 126 catalog hits, `base4-4`/`base1-4`/`ex14-4` tied at 1.00 (a known P2 issue), three price rows, `Smoke test passed.` |
+| `npm test` | n/a | No `test` script exists yet. |
 
-No gate failed because of P1 changes, so no fixes were made during the gate run. Adding `tsx` as a dev dependency (P4) would stop the npx cache failure.
+No gate failed because of P1 changes, so the gate run needed no code fixes. Adding `tsx` as a dev dependency (P4) would stop the npx cache failure.
+
+### Acceptance criteria
+
+| AC | Result | Evidence |
+|---|---|---|
+| AC-P1.1 | needs human | `src/app/scan.tsx` shows the explanation and an "Allow camera access" button when the app can still ask. This was checked only by reading the code. It needs the Android emulator. |
+| AC-P1.2 | needs human | In `scan.tsx`, when `canAskAgain` is false the screen shows "Camera access is off", "Open Settings" (`Linking.openSettings()`) and "Enter card manually" (→ `/manual-entry`). Open Settings needs the real OS settings app. |
+| AC-P1.3 | needs human | Every Scan state in `scan.tsx` renders Cancel → `goBack()` (`router.back()`, or `router.replace('/')` when there is nothing to go back to). Code check only. The web denied-state Cancel was not tried, and iOS is deferred. |
+| AC-P1.4 | needs human | `guideWidth = min(0.75·width, 0.55·height·63/88)`, and the controls sit at `insets.bottom + 24`. Code check only. It needs a small emulator with 3-button navigation. |
+| AC-P1.5 | needs human | `busyRef` in `runScan` drops a second call, and the shutter and Import photo are both `disabled={busy}`. Code check only. Double-tapping needs a real camera. |
+| AC-P1.6 | needs human | The `ocr-unavailable` path was seen on web (Manual entry with the photo, then Confirm). The `no-text` and `error` paths in `processPhoto`/`runScan` route to `/manual-entry` with `photoId`, and `scan.tsx` has no `Alert`. Those two paths need OCR in a dev build. |
+| AC-P1.7 | met | `processPhoto` and `runScan` pass only `photoId` (from `setLastPhoto`) in params. In the web preview the URLs were `/manual-entry?photoId=…&reason=ocr-unavailable` and `/confirm?…&photoId=…`, with no `blob:` or `data:` URI. |
+| AC-P1.8 | needs human | `src/app/confirm.tsx:78` and `:141` render `OcrDebugPanel` only under `__DEV__`. Code check only. No release build has been made. |
+| AC-P1.9 | needs human | Needs the Android emulator dev build (`npx expo run:android`). Not done yet. |
+| AC-P1.10 | met | `scripts/ocr-fixtures.ts` passed 13/13 in this run, covering promo (SWSH284, SM60, SVP 085), TG12/TG30, 004/102, stage/HP and Illus. lines. The script makes no network calls. |
+| AC-P1.11 | needs human (met on web) | "Import photo" appears in the camera controls and in both permission-not-granted states. `importPhoto = () => runScan(pickCardPhoto)` uses the same `processPhoto` path as `capture()`. On web it led to Manual entry with the photo, then to Confirm, and canceling stayed on Scan. Android needs the emulator. |
+
+### Definition of Done (items 1–6)
+
+| # | Item | Holds? | Evidence |
+|---|---|---|---|
+| 1 | Every task done or blocked with a reason | yes | P1.1–P1.7 are all done (table above). |
+| 2 | Every AC marked in `docs/status.md` | yes | All 11 are marked in the table above (2 met, 9 needs human). |
+| 3 | Gates pass | yes | tsc, lint, ocr-fixtures and smoke all pass. The two tsx runs needed a fresh npx cache, an environment problem. `npm test` does not exist yet. |
+| 4 | No confirmed high or medium review finding left unfixed | yes | The P1.7 report lists none. Reading the `scan.tsx`, `photo-import.service.ts` and `app.json` diff turned up none either. |
+| 5 | No new lint suppressions, untyped `any` or unexplained TODOs | yes | `git diff` of `src/` and `app.json` has no `eslint-disable`, `any` or `TODO`. |
+| 6 | Docs match the code | yes | This section covers P1.7. `docs/dev-phases.md` already lists P1.7 and AC-P1.11, so scope did not change. |
+
+Items 7–9 (HLD republish, commit on `feat/p1-scan-reliability`, owners for the needs_human items) are for the person running the workflow. In particular, the AC-P1.11 web check means the HLD page should show P1.7 as built.
+
+### Notes from P1.7
+
+- In `app.json`, `cameraPermission` in the expo-image-picker plugin repeats the expo-camera text instead of being set to `false`. In SDK 58, `false` deletes `NSCameraUsageDescription` and blocks `android.permission.CAMERA`, which would break expo-camera.
+- `microphonePermission: false` deletes the iOS microphone usage string that expo-camera adds. This could cause an App Store purpose-string warning later. Check it when iOS work starts.
 
 ### Human-only items
 
 - **needs_human:** install Android Studio with an emulator (Google Play image), run `npx expo run:android`, test with the webcam and imported photos, and record the results here. iOS is deferred (no Mac, no paid Apple account). Not done yet.
 - Before the first build: the account owner must choose `ios.bundleIdentifier` and `android.package`. They are not in `app.json`, and no values were made up. The first build or `eas init` also needs an Expo account login and project linking (`extra.eas.projectId`).
+- **AC-P1.11 (Import photo):** met on web, not yet checked on Android. In the browser preview (web, camera permission not granted), Scan → Import photo with a test PNG went to `/manual-entry?photoId=…&reason=ocr-unavailable` with the photo shown from its `blob:` URL. Name and number then reached Confirm (`/confirm?name=Charizard&number=4&total=102&lines=&photoId=…`), with no `blob:`/`data:` image on Confirm and no URI in the URL. A canceled picker cleared "Reading card…" and stayed on Scan. The file dialog was driven by a test script, not by hand. The granted-camera controls row was not checked (no webcam in the preview). Android needs the emulator (human step).
+- On-device checks for Import photo: the button in the controls row and in both permission states; the Android system photo picker opens with no permission prompt; an imported card goes to Confirm when OCR reads it and to manual entry (`no-text` / `error`) when it does not; canceling the picker stays on Scan; the shutter and Import photo cannot run at the same time; the imported photo is never shown as card artwork on Confirm or Result.
 - On-device checks still to do: permission states (including Open Settings), the guide and controls on short and notched screens, OCR through the dev client, the manual-entry fallback, and the `__DEV__` debug panel.
 
 ---
@@ -278,3 +317,65 @@ No `TODO` / `FIXME` / `HACK` comments exist in `src/` or `scripts/` (grep found 
   `assets/images/react-logo*.png`, `expo-logo.png`, `expo-badge*.png`, `tutorial-web.png`, `tabIcons/explore*`. (P6.1/P6.4)
 - **[gap]** No `docs/release-checklist.md`. (P6.5)
 - **needs_human:** Apple/Google developer accounts, signing, store listing, `eas submit`.
+
+---
+
+## P1 test run (2026-11-04, Chrome + Android emulator in Expo Go)
+
+Run by Claude on this PC: Chrome (Expo web on :8081) and the `Pixel_9`
+emulator (Android, Google Play image) running the app in **Expo Go**. The
+native development build could not be made (see "Blockers").
+
+### Automated gates (final code)
+
+| Gate | Result |
+|---|---|
+| `npx tsc --noEmit` | PASS |
+| `npx expo lint` | PASS |
+| `scripts/ocr-fixtures.ts` | PASS, 13/13 |
+| `scripts/smoke-test.ts` | PASS (still shows the P2 three-way Charizard tie) |
+| `npx expo-doctor` | WARN: 16 Expo packages one patch behind SDK 58 (`npx expo install --check`) |
+
+### Acceptance criteria
+
+| AC | Result | Evidence |
+|---|---|---|
+| AC-P1.1 | **met** | Chrome and emulator: "Camera access needed" + "Allow camera access", "Import photo", "Cancel". |
+| AC-P1.2 | **partly met** | Emulator: after two denials, "Camera access is off" with "Open Settings" (opens Android Settings) and "Enter card manually" (works). **Gap:** Scan never re-checks permission when the app returns from Settings (no `AppState` refresh in `src/app/scan.tsx`), so the screen likely stays "off" until Scan is reopened. Could not be confirmed in Expo Go, which keeps its own per-project permission state. |
+| AC-P1.3 | **met** | Chrome and emulator: Cancel returns to Home from the permission screens and the camera screen. |
+| AC-P1.4 | **met at 1080×2424** | Emulator camera screen: 63:88 frame fully visible, controls above the gesture bar. Small screen and 3-button navigation not tried yet. |
+| AC-P1.5 | **met** | Emulator: two shutter taps in one adb command gave one capture and one Manual entry screen. |
+| AC-P1.6 | **met for "OCR unavailable"** | Chrome and Expo Go: photo → Manual entry with the photo and the "not available" message → Confirm. The "no text" and "error" paths need OCR (dev build). |
+| AC-P1.7 | **met** | Chrome URLs: `/manual-entry?reason=permission`, `/confirm?name=…&photoId=`; no `blob:`/`data:` URI anywhere. |
+| AC-P1.8 | needs dev/release build | Debug panel shows in development (Chrome, Expo Go); absence in release builds not checked. |
+| AC-P1.9 | **blocked** | `npx expo run:android` fails on Windows (see Blockers). |
+| AC-P1.10 | **met** | 13/13 offline fixtures. |
+| AC-P1.11 | **met (web, Expo Go)** | Emulator: "Import photo" → Android photo picker → Manual entry with the photo; same path as the camera. Real OCR on an imported photo needs the dev build. |
+
+Also checked: Manual entry validation ("Enter the card name."), Confirm → Result
+for Base Set Charizard (prices show provider, currency and date), the scan appears
+under Recent scans, "No matching cards" offers "Enter details manually".
+
+### Findings
+
+1. **Permission not re-checked after Settings** (AC-P1.2): add an `AppState` "active" listener on Scan that calls the permission getter from `useCameraPermissions`.
+2. **Dev overlay in Expo Go:** importing or capturing a photo shows a red "Uncaught Error: Cannot find native module 'ExpoTextExtractor'" before Manual entry. The flow is correct and release builds would not show it, but `ocr.service.ts` should check that the native module exists (for example `requireOptionalNativeModule('ExpoTextExtractor')` from `expo-modules-core`) before requiring the package.
+3. **Copy:** Manual entry labels an imported picture "Photo you took of the card"; say "Card photo" instead.
+4. **Picker:** the Android photo picker needs an extra "Done" tap after choosing a photo; check `selectionLimit`/`allowsMultipleSelection` in `photo-import.service.ts`.
+5. Confirmed P2 issues: candidates tie (`base4-4`, `base1-4`, `ex14-4` at 100 %), rows show card ids instead of set names, more than 5 candidates, "Normal" Cardmarket price on a holo-only card, no variant step.
+
+### Blockers
+
+- **Native Android build fails on Windows:** `ninja: Filename longer than 260 characters` in the React Native Gesture Handler C++ build (`android/app/.cxx/...`, 341 characters). A shorter drive letter only reaches 293. Free fixes, both needing the owner: build in the cloud on the **EAS free plan** (needs a free Expo account and `eas login`), or turn on **Windows long paths** (admin setting) and install a newer CMake in Android Studio's SDK Manager.
+- `android.package` set to `com.pokeworth.app` in `app.json` for this test; rename before publishing if wanted.
+
+### Fixes after the test run (2026-11-04)
+
+| Finding | Fix | Verified |
+|---|---|---|
+| 1. Permission not re-checked after Settings | `src/app/scan.tsx` re-reads the camera permission (`getPermission` from `useCameraPermissions`) whenever `AppState` becomes `active`. | Typecheck + review only. Expo Go keeps its own permission state, so confirm in the native build (AC-P1.2). |
+| 2. Expo Go "Cannot find native module 'ExpoTextExtractor'" overlay | `src/services/ocr.service.ts` checks `requireOptionalNativeModule('ExpoTextExtractor')` (from `expo`) before requiring the package. | Emulator, Expo Go: both Import photo and camera capture now go straight to Manual entry with no overlay. |
+| 3. Imported picture labelled "Photo you took of the card" | Label is now "Card photo" (`src/app/manual-entry.tsx`). | Emulator: label reads "Card photo". |
+| 4. Extra "Done" tap in the photo picker | No change: `expo-image-picker` already uses Android's single-photo picker (`PickVisualMedia`); the "Done" step is the newer Android system picker's own UI. | Checked in `expo-image-picker` source. |
+
+Gates after the fixes: `tsc` PASS, `expo lint` PASS, OCR fixtures 13/13.

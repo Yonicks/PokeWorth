@@ -51,6 +51,35 @@ person running it does 7–9.
 
 ---
 
+## How to test (free: Android Studio emulator, Chrome, Expo Go)
+
+Three environments, all free on Windows. Use the one that can actually show
+what a criterion is about; the per-phase "how_to_test" lists say which.
+
+| Environment | Start it | Has OCR | Best for |
+|---|---|---|---|
+| **Android emulator, development build** | Android Studio → Device Manager → create a Pixel device with a **Google Play** system image → start it → `npx expo run:android` (first run may ask for an Android package name, e.g. `com.yourname.pokeworth`) | Yes (ML Kit) | Real scans, permissions, native UI, TalkBack, release checks |
+| **Chrome (web)** | `npx expo start --web`, then DevTools → device toolbar at 393 × 852 | No, so every scan ends on Manual entry | Layout, navigation, offline and slow-network states, storage, quick visual checks |
+| **Expo Go** | Install Expo Go from the Play Store inside the emulator, then `npx expo start --go` and press `a` | No (Expo Go lacks `expo-text-extractor`) | Fast reloads while changing UI; everything except OCR |
+
+Emulator tips:
+- **Real cards through the webcam:** Device Manager → edit the device → Show Advanced Settings → Back camera: `Webcam0`.
+- **Photo files:** drag a JPG onto the emulator window (saved to Downloads), or `adb push card.jpg /sdcard/Pictures/`. Use these with "Import photo".
+- **Network:** airplane mode from quick settings; slow network under Extended controls (`...`) → Cellular.
+- **Permissions reset:** `adb shell pm reset-permissions`, or long-press the app → App info → Permissions.
+- **Logs:** the Metro terminal, or `adb logcat *:E`.
+
+Chrome tips:
+- **Offline / slow:** DevTools → Network → "Offline" or "Slow 3G".
+- **Storage:** DevTools → Application → Local Storage holds AsyncStorage data on web; edit or clear it to test corrupt or empty data.
+- **Camera permission:** the camera icon in the address bar → Allow / Block.
+- **Accessibility:** DevTools → Lighthouse → Accessibility; Tab key navigation; browser zoom 200 %.
+
+Expo Go note: `expo-dev-client` is installed, so plain `npx expo start` targets the
+development build; add `--go` to open Expo Go instead.
+
+---
+
 ## P0 · Baseline audit
 
 - **id:** P0
@@ -71,6 +100,10 @@ person running it does 7–9.
 - **definition_of_done:** the shared Definition of Done, plus:
   - `docs/status.md` committed.
   - HLD artifact shows the audit statuses.
+- **how_to_test:**
+  - Any terminal:
+    - Run the gates: `npx tsc --noEmit`, `npx expo lint`, `npx tsx scripts/ocr-fixtures.ts`, `npx tsx scripts/smoke-test.ts`.
+    - Read `docs/status.md` and spot-check three file references.
 - **needs_human:** none
 
 ## P1 · Scan reliability
@@ -102,6 +135,21 @@ person running it does 7–9.
   - AC-P1.11 Scan offers "Import photo"; an imported image follows the same path as a camera photo, including manual entry when OCR fails, on Android and web. (E2)
 - **definition_of_done:** the shared Definition of Done, plus:
   - Development build tested on the Android emulator and recorded in `docs/status.md` (needs human). iOS deferred.
+- **how_to_test:**
+  - Android emulator (dev build):
+    - First launch → Scan → "Allow camera access" → camera opens (AC-P1.1).
+    - Deny the permission twice ("Don't allow"), reopen Scan → "Camera access is off" with "Open Settings" and "Enter card manually"; both work (AC-P1.2).
+    - Point the webcam at a real card → Confirm opens; expand the OCR debug panel and check the raw lines (AC-P1.8, AC-P1.9).
+    - "Import photo" → pick a JPG from Pictures → same path as the camera (AC-P1.11).
+    - Cover the card or import a blank photo → Manual entry shows the photo; continue to Confirm (AC-P1.6).
+    - Double-tap the shutter quickly → only one capture (AC-P1.5).
+    - Create a small device (e.g. 4.7" Pixel) and switch to 3-button navigation → frame fully visible, controls above the nav bar (AC-P1.4).
+  - Chrome:
+    - Scan with the laptop webcam → no OCR on web → Manual entry with the photo (AC-P1.6).
+    - Check the address bar never contains photo data (AC-P1.7).
+    - Block the camera in site settings → denied state; Cancel leaves the screen without a back button (AC-P1.3).
+  - Expo Go:
+    - Scan → OCR unavailable → Manual entry keeps the photo; permission dialogs are the native Android ones.
 - **needs_human:** Install Android Studio with an emulator (Google Play image), run `npx expo run:android`, scan a few cards with the webcam or imported photos, and record results in `docs/status.md`. iOS deferred.
 
 ## P2 · Identification and pricing
@@ -129,6 +177,18 @@ person running it does 7–9.
   - AC-P2.9 Fixtures cover same name across sets, set-size tie-breaks and `ex`/`V`/`VMAX` names, and pass offline. (G4)
 - **definition_of_done:** the shared Definition of Done, plus:
   - 10-card price spot-check recorded in `docs/status.md` (needs human).
+- **how_to_test:**
+  - Android emulator (dev build):
+    - Scan or import a Base Set Charizard `4/102` photo → `base1-4` is first (AC-P2.2).
+    - A card with several printings → variant picker appears before any price (AC-P2.4).
+    - A card with no market data → "No price available", no number (AC-P2.6).
+    - An ambiguous read → no auto-advance; you must pick (AC-P2.3).
+  - Chrome:
+    - Search `Charizard` and `4/102` → correct prints, result opens (AC-P2.8).
+    - Open each price next to the TCGplayer and Cardmarket pages for the same card and variant (10-card spot-check).
+    - DevTools → Network: inspect the TCGdex JSON when a price looks wrong (AC-P2.5, AC-P2.7).
+  - Expo Go:
+    - Repeat the Search and Result checks on Android for layout and text overflow.
 - **needs_human:** Spot-check 10 real cards' prices against TCGplayer/Cardmarket websites.
 
 ## P3 · Home redesign
@@ -160,6 +220,18 @@ person running it does 7–9.
 - **definition_of_done:** the shared Definition of Done, plus:
   - Layout decision (r1 / r2) recorded in `docs/status.md`.
   - Check on the Android emulator and web by a human.
+- **how_to_test:**
+  - Chrome:
+    - Device toolbar at 393 × 852 → compare each Home section with the chosen reference image side by side (AC-P3.2).
+    - DevTools → Rendering → emulate light and dark `prefers-color-scheme` → Home stays dark (AC-P3.7).
+    - Click every entry point: Scan Card, Search Manually, See All, Collection (AC-P3.4).
+    - Clear Local Storage with a dev build → "Demo" scans appear; add a real scan → demo rows disappear (AC-P3.5).
+  - Android emulator (dev build):
+    - Developer options → Simulate a display cutout → nothing hidden under the notch or tab bar (AC-P3.7).
+    - Switch tabs, open Scan and Result, press Back → returns to the same tab with state kept (AC-P3.3).
+    - Run E1 and E2 again (AC-P3.8).
+  - Expo Go:
+    - Fast visual iteration on the Home components; `react-native-svg` works in Expo Go.
 - **needs_human:** Choose `layout`; supply licensed hero art and the card-back asset; check on the Android emulator and web.
 
 ## P4 · MVP hardening
@@ -190,6 +262,19 @@ person running it does 7–9.
   - AC-P4.9 `docs/photo-test-matrix.md` lists each condition with its expected outcome.
 - **definition_of_done:** the shared Definition of Done, plus:
   - Photo test matrix run on the Android emulator with imported photos and the webcam, and results recorded (needs human).
+- **how_to_test:**
+  - Android emulator (dev build):
+    - Airplane mode → each network screen shows an error with Retry; turn it off → Retry works (AC-P4.3).
+    - Extended controls → Cellular → slow network → loading states, then the timeout message (AC-P4.1, AC-P4.2).
+    - Install Android Accessibility Suite from the Play Store, turn on TalkBack → complete a scan and a search (AC-P4.5).
+    - Settings → Display → largest font and display size → no clipped text (AC-P4.5).
+    - Run `npm test` and the Maestro flows (`maestro test .maestro/`; on Windows follow Maestro's install guide, which may use WSL) (AC-P4.7, AC-P4.8).
+    - Run the photo test matrix with imported photos and the webcam (P4.6).
+  - Chrome:
+    - Network "Offline" and "Slow 3G" on Search, Confirm and Result (AC-P4.3).
+    - Lighthouse accessibility audit; Tab through every control; zoom 200 % (AC-P4.5).
+  - Expo Go:
+    - Dev menu → Performance monitor while scrolling long lists (AC-P4.4).
 - **needs_human:** Run the photo test matrix on the Android emulator (imported photos and webcam) and record results.
 
 ## P5 · Collection
@@ -214,6 +299,17 @@ person running it does 7–9.
   - AC-P5.6 The collection survives an app restart. (E8)
   - AC-P5.7 (r2) Stats shows total, value by set and top cards, and its total equals the Collection total.
 - **definition_of_done:** the shared Definition of Done.
+- **how_to_test:**
+  - Android emulator (dev build):
+    - Add two cards with different variants and quantities, change and remove one (AC-P5.2, AC-P5.3).
+    - Swipe the app away (or `adb shell am force-stop <package>`) and reopen → collection unchanged (AC-P5.6).
+    - Pull to refresh → prices and dates update (AC-P5.5).
+  - Chrome:
+    - Reload the page → collection persists (AC-P5.6).
+    - DevTools → Application → edit `pokeworth.collection.v1` to invalid JSON → empty collection, no crash (AC-P5.1).
+    - Add a card without a price → total excludes it and says so (AC-P5.4).
+  - Expo Go:
+    - Same add/remove checks; Expo Go keeps its own storage per project.
 - **needs_human:** none
 
 ## P6 · Release preparation
@@ -240,4 +336,16 @@ person running it does 7–9.
 - **definition_of_done:** the shared Definition of Done, plus:
   - Acceptance layers 4–5 signed off (needs human).
   - Store submission done, or the release APK shared directly (needs human).
+- **how_to_test:**
+  - Android emulator (release build):
+    - `npx expo run:android --variant release` → app name, icon and navy splash correct (AC-P6.1).
+    - No dev menu, no OCR debug panel, no demo scans (AC-P6.4).
+    - Settings → About shows attribution and disclaimers (AC-P6.3).
+    - Share the release APK by dragging it onto a fresh emulator to confirm it installs.
+  - Chrome:
+    - `npx expo export --platform web`, then `npx serve dist` → production web build works with no demo data.
+  - Any terminal:
+    - `npx expo-doctor` is clean (AC-P6.2); run acceptance layers 1–3 and fill in the sign-off table (AC-P6.6).
+  - Expo Go:
+    - Not used: Expo Go is always a development environment, so it cannot prove release behaviour.
 - **needs_human:** Run acceptance layers 4–5 (real-card benchmark, emulator, price and quality checks) and sign off. Store publishing costs money (Google Play one-time registration fee, Apple yearly fee) and is optional: until then, share the Android release APK directly for free. iOS builds wait for a Mac or an Apple Developer account.

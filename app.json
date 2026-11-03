@@ -17,7 +17,8 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.pokeworth.app"
     },
     "web": {
       "output": "single",
@@ -29,6 +30,14 @@
         "expo-camera",
         {
           "cameraPermission": "PokeWorth uses the camera to photograph Pokémon cards for identification."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "PokeWorth uses your photos to identify Pokémon cards.",
+          "cameraPermission": "PokeWorth uses the camera to photograph Pokémon cards for identification.",
+          "microphonePermission": false
         }
       ],
       [

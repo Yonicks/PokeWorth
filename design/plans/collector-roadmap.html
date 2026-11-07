@@ -1,0 +1,376 @@
+<title>PokeWorth Collector Roadmap</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column; each screen is a row of phone wireframe + feature table, then data, order and decisions. */
+:root {
+  /* Dark-first: PokeWorth is a dark navy-and-gold app (design/home-spec.md §2). */
+  --bg: #031229;
+  --surface: #0a1a30;
+  --raised: #12243b;
+  --line: #1e3150;
+  --fg: #fefefe;
+  --fg-2: #cdd9ec;
+  --fg-3: #a9b9d3;
+  --gold: #fdcb56;
+  --gold-text: #fedf4e;
+  --ok: #5fd3a8;
+  --warn: #f6b35b;
+  --no: #f07c6c;
+  --font-display: "Fredoka", "Nunito", ui-rounded, system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #f3f5fa; --surface: #ffffff; --raised: #e8edf6; --line: #cfd8e8;
+    --fg: #0b1830; --fg-2: #2c3d5c; --fg-3: #56688a;
+    --gold: #c98a00; --gold-text: #9a6a00;
+    --ok: #138a63; --warn: #a96400; --no: #c0392b;
+    color-scheme: light;
+  }
+}
+:root[data-theme="light"] {
+  --bg: #f3f5fa; --surface: #ffffff; --raised: #e8edf6; --line: #cfd8e8;
+  --fg: #0b1830; --fg-2: #2c3d5c; --fg-3: #56688a;
+  --gold: #c98a00; --gold-text: #9a6a00;
+  --ok: #138a63; --warn: #a96400; --no: #c0392b;
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font: 15px/1.6 var(--font-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 40px 72px;
+}
+.wrap { max-width: 1040px; margin: 0 auto; display: grid; gap: 56px; }
+h1, h2, h3 { font-family: var(--font-display); font-weight: 600; text-wrap: balance; margin: 0; line-height: 1.2; }
+h1 { font-size: clamp(30px, 5vw, 44px); }
+h1 span { color: var(--gold-text); }
+h2 { font-size: 26px; }
+h3 { font-size: 19px; }
+p { margin: 0; max-width: 68ch; color: var(--fg-2); }
+.eyebrow { font: 500 12px/1 var(--font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--fg-3); }
+code, .mono { font-family: var(--font-mono); font-size: 13px; }
+a { color: var(--gold-text); }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+header { display: grid; gap: 16px; }
+.meta { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { font: 500 12px/1 var(--font-mono); padding: 7px 10px; border-radius: 999px; border: 1px solid var(--line); color: var(--fg-2); background: var(--surface); }
+
+section { display: grid; gap: 20px; }
+.lead { display: grid; gap: 8px; }
+
+.keep { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+.keep > div { border-top: 2px solid var(--line); padding-top: 12px; display: grid; gap: 6px; }
+.keep > div.yes { border-color: var(--ok); }
+.keep > div.no { border-color: var(--no); }
+.keep ul { margin: 0; padding-left: 18px; color: var(--fg-2); }
+
+/* Screen rows */
+.screen { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 28px; align-items: start; padding-top: 28px; border-top: 1px solid var(--line); }
+@media (max-width: 720px) { .screen { grid-template-columns: minmax(0, 1fr); } .phone { justify-self: center; } }
+.screen-body { display: grid; gap: 14px; min-width: 0; }
+
+/* Phone wireframe in PokeWorth tokens */
+.phone { width: 220px; max-width: 100%; aspect-ratio: 9 / 19; border-radius: 28px; border: 1px solid var(--line); background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 70%, #001643) 0%, var(--bg) 60%); padding: 14px 12px 10px; display: flex; flex-direction: column; gap: 7px; overflow: hidden; position: relative; }
+.phone .bar { height: 7px; border-radius: 4px; background: var(--raised); }
+.phone .bar.gold { background: var(--gold); }
+.phone .bar.w40 { width: 40%; } .phone .bar.w60 { width: 60%; } .phone .bar.w80 { width: 80%; }
+.phone .row { display: flex; gap: 6px; align-items: center; }
+.phone .pill { flex: 1; height: 20px; border-radius: 10px; background: var(--raised); border: 1px solid var(--line); }
+.phone .pill.on { background: color-mix(in srgb, var(--gold) 35%, var(--raised)); }
+.phone .dot { width: 20px; height: 20px; border-radius: 50%; background: var(--raised); border: 1px solid var(--line); flex: none; }
+.phone .dot.gold { background: var(--gold); border-color: var(--gold); }
+.phone .card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 6px; display: grid; gap: 4px; }
+.phone .art { border-radius: 5px; background: linear-gradient(135deg, #e9b949, #d8573a 55%, #3a6fb6); aspect-ratio: 63 / 88; }
+.phone .art.big { width: 52%; margin: 2px auto 4px; box-shadow: 0 0 24px color-mix(in srgb, var(--gold) 40%, transparent); }
+.phone .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.phone .chart { height: 52px; border-radius: 6px; background: var(--surface); border: 1px solid var(--line); position: relative; overflow: hidden; }
+.phone .chart svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.phone .table { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3px; }
+.phone .table span { height: 22px; border-radius: 3px; background: var(--surface); border: 1px solid var(--line); }
+.phone .table span:first-child { border-color: var(--gold); }
+.phone .tabs { margin-top: auto; display: flex; justify-content: space-around; align-items: center; padding: 7px 6px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); }
+.phone .tabs i { width: 14px; height: 14px; border-radius: 4px; background: var(--fg-3); opacity: .55; }
+.phone .tabs i.on { background: var(--gold-text); opacity: 1; }
+.phone .tabs i.scan { width: 24px; height: 24px; border-radius: 50%; background: var(--gold); opacity: 1; }
+.phone .big-num { font: 700 20px/1 var(--font-display); color: var(--fg); text-align: center; }
+.phone .small { font: 500 9px/1.2 var(--font-mono); color: var(--fg-3); text-align: center; }
+
+/* Feature tables */
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; }
+table { border-collapse: collapse; width: 100%; min-width: 560px; font-size: 14px; }
+th, td { text-align: left; vertical-align: top; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+th { font: 500 11px/1.2 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--fg-3); background: var(--surface); }
+tr:last-child td { border-bottom: 0; }
+td:first-child { font-weight: 600; color: var(--fg); white-space: nowrap; }
+td { color: var(--fg-2); }
+.tag { display: inline-block; font: 500 11px/1 var(--font-mono); padding: 4px 7px; border-radius: 5px; border: 1px solid currentColor; white-space: nowrap; }
+.tag.free { color: var(--ok); }
+.tag.part { color: var(--warn); }
+.tag.none { color: var(--no); }
+.phase { font: 500 12px/1 var(--font-mono); color: var(--gold-text); white-space: nowrap; }
+
+/* Build order */
+.steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; counter-reset: step; }
+.steps li { counter-increment: step; display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 16px; padding: 16px 0; border-top: 1px solid var(--line); }
+.steps li::before { content: counter(step); font: 600 26px/1 var(--font-display); color: var(--gold-text); }
+.steps li div { display: grid; gap: 6px; min-width: 0; }
+.steps li p { font-size: 14px; }
+.steps .why { color: var(--fg-3); font-size: 13px; }
+
+.decisions { display: grid; gap: 12px; }
+.decision { background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--gold); border-radius: 8px; padding: 14px 16px; display: grid; gap: 6px; }
+.decision p { font-size: 14px; }
+.decision .rec { color: var(--fg); }
+
+footer p { font-size: 13px; color: var(--fg-3); }
+</style>
+
+<div class="wrap">
+
+<header>
+  <div class="eyebrow">Build plan · all 6 steps built</div>
+  <h1>PokeWorth <span>Collector Roadmap</span></h1>
+  <p>This plan covers the portfolio, card detail, search and overview screens from the five Collectr screenshots you shared, rebuilt in PokeWorth's own navy-and-gold style. For each feature it says where the data would come from, whether that data is free, and which phase builds it.</p>
+  <div class="meta">
+    <span class="chip">7 Nov 2026</span>
+    <span class="chip">Decisions: all four accepted</span>
+    <span class="chip">Source: 5 reference screenshots</span>
+    <span class="chip">Extends docs/dev-phases.md P2–P5</span>
+    <span class="chip">Data: TCGdex (free)</span>
+  </div>
+</header>
+
+<section>
+  <div class="lead">
+    <div class="eyebrow">Scope</div>
+    <h2>What we copy, and what stays ours</h2>
+  </div>
+  <div class="keep">
+    <div class="yes">
+      <h3>Copy</h3>
+      <ul>
+        <li>Screen layouts and the order of information</li>
+        <li>Feature set: portfolio, price history, per-variant prices, quantity steppers, graded section</li>
+        <li>Interaction patterns: range pills, Raw / Graded tabs, 2-column card grid</li>
+      </ul>
+    </div>
+    <div class="yes">
+      <h3>Keep from PokeWorth</h3>
+      <ul>
+        <li>Navy backgrounds, gold accents and price colour from <code>design/home-spec.md</code></li>
+        <li>Scan-first flow: the camera stays the main action</li>
+        <li>Every price shows provider, variant, currency and date (AC-P2.5)</li>
+      </ul>
+    </div>
+    <div class="no">
+      <h3>Leave out</h3>
+      <ul>
+        <li>Collectr's name, logo, icons and wording</li>
+        <li>Shop, Social, ad banners, promo codes, "Pro" paywall badges</li>
+        <li>Any number we cannot source, such as PSA population or gem rate</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="lead">
+    <div class="eyebrow">Screens</div>
+    <h2>Four screens, feature by feature</h2>
+    <p>The wireframes show layout only, drawn in PokeWorth tokens. <span class="tag free">free</span> means TCGdex or an on-device feature covers it today. <span class="tag part">partial</span> means we can build a smaller honest version. <span class="tag none">no source</span> means no free data exists, so it waits for a decision.</p>
+  </div>
+
+  <!-- Card detail -->
+  <div class="screen">
+    <div class="phone" aria-hidden="true">
+      <div class="row"><span class="dot"></span><span style="flex:1"></span><span class="dot"></span></div>
+      <div class="art big"></div>
+      <div class="bar w60"></div>
+      <div class="bar w80"></div>
+      <div class="row"><span class="pill on"></span><span class="bar gold w40" style="height:12px"></span></div>
+      <div class="row"><span class="pill on"></span><span class="pill"></span><span class="pill"></span></div>
+      <div class="chart"><svg viewBox="0 0 100 40" preserveAspectRatio="none"><polyline points="0,34 15,30 30,31 45,22 55,25 70,14 85,12 100,6" fill="none" stroke="var(--ok)" stroke-width="2"/></svg></div>
+      <div class="row"><span class="pill"></span><span class="pill on"></span><span class="pill"></span><span class="pill"></span></div>
+      <div class="card"><div class="row"><span class="bar w40"></span><span style="flex:1"></span><span class="dot"></span><span class="bar" style="width:14px"></span><span class="dot gold"></span></div></div>
+      <div class="tabs"><i></i><i></i><i class="scan"></i><i class="on"></i><i></i></div>
+    </div>
+    <div class="screen-body">
+      <div class="eyebrow">Screen 1 · replaces <code>src/app/result.tsx</code></div>
+      <h3>Card detail</h3>
+      <p>The card's artwork, glowing, above its name, set, rarity and number. Below that: the price for each printing, a price chart, and an "add to portfolio" panel with a quantity stepper for each printing.</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Feature</th><th>What it does</th><th>Data</th><th>Phase</th></tr></thead>
+        <tbody>
+          <tr><td>Hero artwork</td><td>Large card image on a blurred copy of itself; back, menu and full-screen buttons.</td><td><span class="tag free">free</span> TCGdex <code>image/high.webp</code></td><td class="phase">P2</td></tr>
+          <tr><td>Title block</td><td>Name; game · set name (tappable, opens the set); rarity · number; favourite star.</td><td><span class="tag free">free</span> TCGdex card + set</td><td class="phase">P2</td></tr>
+          <tr><td>Price per printing</td><td>Normal, Holofoil, Reverse Holo rows with provider, currency and date.</td><td><span class="tag free">free</span> TCGplayer + Cardmarket via TCGdex</td><td class="phase">P2</td></tr>
+          <tr><td>Price change</td><td>Change against the 7- and 30-day average. There is no daily change, because TCGdex has no daily figure for TCGplayer.</td><td><span class="tag part">partial</span> Cardmarket <code>avg1 / avg7 / avg30</code></td><td class="phase">P2</td></tr>
+          <tr><td>Price chart</td><td>Line chart with low/high guides and 1M · 3M · 6M · 12M · MAX range pills.</td><td><span class="tag part">partial</span> our own daily snapshots, see Data</td><td class="phase">P7</td></tr>
+          <tr><td>Sold listings</td><td>Opens eBay's sold-items search for this card in the browser.</td><td><span class="tag free">free</span> a link, no API</td><td class="phase">P2</td></tr>
+          <tr><td>Raw / Graded tabs</td><td>Graded tab shows PSA 10 to 7.5 prices and counts.</td><td><span class="tag none">no source</span> for prices and population</td><td class="phase">P8</td></tr>
+          <tr><td>Add to portfolio</td><td>"Adding to: Main", a −/qty/+ stepper for each printing, a running total, and "Add a graded card" for your own graded copies.</td><td><span class="tag free">free</span> on-device storage</td><td class="phase">P5</td></tr>
+          <tr><td>Price alert bell</td><td>Notify when a card crosses a price you set.</td><td><span class="tag part">partial</span> checks only when the app opens, without a server</td><td class="phase">Later</td></tr>
+        </tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <!-- Portfolio -->
+  <div class="screen">
+    <div class="phone" aria-hidden="true">
+      <div class="row"><span class="pill"></span><span class="dot"></span><span class="dot"></span></div>
+      <div class="small">PORTFOLIO · MAIN</div>
+      <div class="big-num">$2,613</div>
+      <div class="row" style="justify-content:space-around"><span class="dot gold"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+      <div class="grid2">
+        <div class="card"><div class="art"></div><div class="bar w80"></div><div class="bar gold w40"></div></div>
+        <div class="card"><div class="art" style="background:linear-gradient(135deg,#3b4f8a,#7c4fb0)"></div><div class="bar w80"></div><div class="bar gold w40"></div></div>
+        <div class="card"><div class="art" style="background:linear-gradient(135deg,#d9c34a,#5b7f3a)"></div><div class="bar w60"></div><div class="bar gold w40"></div></div>
+        <div class="card"><div class="art" style="background:linear-gradient(135deg,#29324e,#c9a33c)"></div><div class="bar w60"></div><div class="bar gold w40"></div></div>
+      </div>
+      <div class="tabs"><i></i><i></i><i class="scan"></i><i class="on"></i><i></i></div>
+    </div>
+    <div class="screen-body">
+      <div class="eyebrow">Screen 2 · new tab <code>(tabs)/portfolio</code></div>
+      <h3>Portfolio</h3>
+      <p>The cards you own, in a 2-column grid, with the portfolio's total value at the top.</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Feature</th><th>What it does</th><th>Data</th><th>Phase</th></tr></thead>
+        <tbody>
+          <tr><td>Card grid</td><td>Image, name, set, rarity · number, condition · printing, value, change, quantity.</td><td><span class="tag free">free</span> storage + TCGdex</td><td class="phase">P5</td></tr>
+          <tr><td>Total value</td><td>Sum of priced cards, with an eye button to hide it. It says how many cards have no price.</td><td><span class="tag free">free</span> AC-P5.4</td><td class="phase">P5</td></tr>
+          <tr><td>Search, favourites, filter</td><td>Search inside your collection; filter by set, rarity, printing; sort by value or date added.</td><td><span class="tag free">free</span> on-device</td><td class="phase">P5</td></tr>
+          <tr><td>Several portfolios</td><td>"Main" plus named portfolios, for example a binder and a for-trade pile.</td><td><span class="tag free">free</span> storage schema v1</td><td class="phase">P5</td></tr>
+          <tr><td>Bulk actions</td><td>Select several cards to move, delete or change their condition.</td><td><span class="tag free">free</span></td><td class="phase">P5</td></tr>
+          <tr><td>Export</td><td>Share the portfolio as a CSV file.</td><td><span class="tag free">free</span> file + share sheet</td><td class="phase">P5</td></tr>
+          <tr><td>Market movers</td><td>Your cards that rose or fell most over 7 or 30 days. Covers your own cards only, not the whole market.</td><td><span class="tag part">partial</span> Cardmarket averages</td><td class="phase">P7</td></tr>
+          <tr><td>Trade analyzer</td><td>Compare the value of two piles of cards before a trade.</td><td><span class="tag free">free</span> reuses prices</td><td class="phase">Later</td></tr>
+        </tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <!-- Search -->
+  <div class="screen">
+    <div class="phone" aria-hidden="true">
+      <div class="row"><span class="dot gold"></span><span class="pill"></span><span class="dot"></span></div>
+      <div class="row"><span class="bar w40"></span><span style="flex:1"></span><span class="pill" style="flex:none;width:58px"></span></div>
+      <div class="row"><span class="pill on" style="flex:none;width:70px"></span></div>
+      <div class="grid2">
+        <div class="card"><div class="art" style="background:linear-gradient(135deg,#2d7a4e,#d0a640)"></div><div class="bar w80"></div><div class="row"><span class="bar gold w40"></span><span style="flex:1"></span><span class="dot"></span></div></div>
+        <div class="card"><div class="art" style="background:linear-gradient(135deg,#d9b443,#a07b22)"></div><div class="bar w80"></div><div class="row"><span class="bar gold w40"></span><span style="flex:1"></span><span class="dot"></span></div></div>
+        <div class="card"><div class="art" style="background:linear-gradient(135deg,#f0e6c8,#c8a24a)"></div><div class="bar w60"></div></div>
+        <div class="card"><div class="art" style="background:linear-gradient(135deg,#2f5fb0,#4fbf6f)"></div><div class="bar w60"></div></div>
+      </div>
+      <div class="tabs"><i></i><i class="on"></i><i class="scan"></i><i></i><i></i></div>
+    </div>
+    <div class="screen-body">
+      <div class="eyebrow">Screen 3 · new tab <code>(tabs)/search</code>, covers P2.4</div>
+      <h3>Search and add</h3>
+      <p>A search bar with a camera button on its left. Results come back as a grid, and each result has a + button that adds it straight to the active portfolio.</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Feature</th><th>What it does</th><th>Data</th><th>Phase</th></tr></thead>
+        <tbody>
+          <tr><td>Search bar + camera</td><td>Type a name or <code>4/102</code>, or tap the camera button to scan.</td><td><span class="tag free">free</span> existing matcher</td><td class="phase">P2</td></tr>
+          <tr><td>Result grid</td><td>Image, name, set, rarity · number, printing, price, owned quantity.</td><td><span class="tag free">free</span> TCGdex</td><td class="phase">P2</td></tr>
+          <tr><td>Quick add (+)</td><td>Adds one copy to the portfolio named in "Adding to: Main"; tapping again raises the quantity.</td><td><span class="tag free">free</span></td><td class="phase">P5</td></tr>
+          <tr><td>Show Sets</td><td>Browse by set, newest first, with logos and card counts.</td><td><span class="tag free">free</span> TCGdex <code>/sets</code></td><td class="phase">P2</td></tr>
+          <tr><td>Sealed products</td><td>Booster boxes and Elite Trainer Boxes, with prices.</td><td><span class="tag none">no source</span> TCGdex lists cards only</td><td class="phase">Later</td></tr>
+        </tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <!-- Overview -->
+  <div class="screen">
+    <div class="phone" aria-hidden="true">
+      <div class="row"><span class="bar w40"></span><span style="flex:1"></span><span class="pill" style="flex:none;width:44px"></span></div>
+      <div class="small">PORTFOLIO · MAIN</div>
+      <div class="big-num">$2,613</div>
+      <div class="bar w60" style="background:var(--no);opacity:.7;margin:0 auto"></div>
+      <div class="chart" style="height:84px"><svg viewBox="0 0 100 40" preserveAspectRatio="none"><polyline points="0,14 20,13 40,12 60,12 70,9 80,8 82,30 100,31" fill="none" stroke="var(--ok)" stroke-width="2"/></svg></div>
+      <div class="row"><span class="pill"></span><span class="pill"></span><span class="pill on"></span><span class="pill"></span><span class="pill"></span></div>
+      <div class="card"><div class="row"><span class="bar w60"></span><span style="flex:1"></span><span class="bar gold" style="width:22px"></span></div><div class="row"><span class="bar w80"></span><span style="flex:1"></span><span class="bar gold" style="width:22px"></span></div><div class="row"><span class="bar w60"></span><span style="flex:1"></span><span class="bar gold" style="width:22px"></span></div></div>
+      <div class="tabs"><i class="on"></i><i></i><i class="scan"></i><i></i><i></i></div>
+    </div>
+    <div class="screen-body">
+      <div class="eyebrow">Screen 4 · Home tab, alongside the P3 hero</div>
+      <h3>Overview</h3>
+      <p>The portfolio's value, how it changed over the last 30 days, a chart of that value over time, and your most valuable cards. The scan button stays at the top.</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Feature</th><th>What it does</th><th>Data</th><th>Phase</th></tr></thead>
+        <tbody>
+          <tr><td>Value + 30-day change</td><td>Total, plus its change since the first daily snapshot inside the window.</td><td><span class="tag part">partial</span> starts empty, fills day by day</td><td class="phase">P7</td></tr>
+          <tr><td>Value chart</td><td>Portfolio value over time with 1D · 7D · 1M · 3M · 6M · MAX pills.</td><td><span class="tag part">partial</span> on-device snapshots</td><td class="phase">P7</td></tr>
+          <tr><td>Most valuable</td><td>Top 4 cards by value, with condition, printing and change; "View all" opens the Portfolio tab.</td><td><span class="tag free">free</span></td><td class="phase">P5</td></tr>
+          <tr><td>Currency switch</td><td>Show values in USD or EUR. TCGplayer prices are in USD and Cardmarket in EUR; conversion uses the European Central Bank's daily rates.</td><td><span class="tag free">free</span> Frankfurter API (checked 7 Nov 2026)</td><td class="phase">P7</td></tr>
+          <tr><td>Performance tab</td><td>Gain or loss against what you paid, if you enter purchase prices.</td><td><span class="tag free">free</span> user input</td><td class="phase">Later</td></tr>
+        </tbody>
+      </table></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="lead">
+    <div class="eyebrow">Data</div>
+    <h2>Where each number comes from</h2>
+    <p>Data is the hard part. Collectr's charts and graded tables run on years of price history and paid data feeds. PokeWorth runs on TCGdex, which gives today's prices only. Each row is a source we could use and what it gives us.</p>
+  </div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Source</th><th>Gives us</th><th>Does not give us</th><th>Cost</th></tr></thead>
+    <tbody>
+      <tr><td>TCGdex (in use)</td><td>Cards, sets, images, today's TCGplayer prices per printing, Cardmarket <code>trend / avg1 / avg7 / avg30</code></td><td>A price history series, graded prices, sealed products</td><td><span class="tag free">free</span></td></tr>
+      <tr><td>Daily snapshots on the phone</td><td>A chart for cards you own, starting the day you add them</td><td>Any history before you installed the app; charts for cards you don't own</td><td><span class="tag free">free</span></td></tr>
+      <tr><td>Scheduled job on a free server</td><td>The same snapshots for many cards every day, kept even if you delete the app</td><td>History before the job starts; needs Supabase or similar, within free limits</td><td><span class="tag part">free tier</span></td></tr>
+      <tr><td>eBay sold-items link</td><td>"View sold listings" in the browser</td><td>Numbers inside the app</td><td><span class="tag free">free</span></td></tr>
+      <tr><td>Graded prices and PSA population</td><td>PSA 10 to 7.5 prices, population counts, gem rate</td><td>No free public source we know of. eBay's sold-price API is restricted, and PSA population access needs an account.</td><td><span class="tag none">no source</span></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <div class="lead">
+    <div class="eyebrow">Order</div>
+    <h2>Build order</h2>
+    <p>Each step ships something you can use on your phone. Steps 1–4 slot into the phases already in <code>docs/dev-phases.md</code>; steps 5 and 6 are new phases.</p>
+  </div>
+  <ol class="steps">
+    <li><div><h3>Tabs and tokens · P3 <span class="tag free">built</span></h3><p>Five-slot tab bar: Home, Search, a centre Scan button, Portfolio, Profile. Shop and Social are dropped. Theme tokens come from the home spec, and Scan, Confirm and Card detail open above the tabs.</p><p class="why">Every later screen sits inside these tabs.</p></div></li>
+    <li><div><h3>Card detail · P2 <span class="tag free">built</span></h3><p>Hero artwork, title block, a price for each printing with provider, currency and date, 7- and 30-day change, the sold-listings link, and a variant picker before any price.</p><p class="why">This is the screen a scan lands on, so it matters most.</p></div></li>
+    <li><div><h3>Search and sets · P2.4 <span class="tag free">built</span></h3><p>Search tab with the camera button, a result grid, and the Show Sets browser.</p><p class="why">Reuses the matcher that was just improved.</p></div></li>
+    <li><div><h3>Portfolio · P5 <span class="tag free">built</span></h3><p>Storage v1 with several portfolios, quantity steppers on Card detail and +1 in Search, the grid, totals, search, filter, bulk actions and CSV export. Most valuable cards appear on Home.</p><p class="why">Once you own cards in the app, the history and overview features have something to show.</p></div></li>
+    <li><div><h3>History and movers · new P7 <span class="tag free">built</span></h3><p>Daily on-device snapshots of portfolio and per-card prices, the price chart with range pills, the Home value chart, market movers for your own cards, and the USD/EUR switch.</p><p class="why">Charts look empty for the first weeks, so this comes after Portfolio.</p></div></li>
+    <li><div><h3>Graded cards · new P8 <span class="tag free">built</span></h3><p>"Add a graded card" with grading company, grade, certificate number and a value you enter yourself. Graded market prices and population only arrive if decision 2 finds a source.</p><p class="why">Collectors can record graded cards now, without data we don't have.</p></div></li>
+  </ol>
+</section>
+
+<section>
+  <div class="lead">
+    <div class="eyebrow">Decisions</div>
+    <h2>Decisions</h2>
+    <p>You accepted all four recommendations on 7 Nov 2026. They are recorded in <code>docs/status.md</code>.</p>
+  </div>
+  <div class="decisions">
+    <div class="decision"><h3>1 · Price history source</h3><p>On-device snapshots are free and private, but they only cover cards you own and start empty. A scheduled job on Supabase's free tier covers more cards, but adds a server to maintain.</p><p class="rec">Recommendation: start on-device in P7, and add the server job later only if the charts feel too thin.</p></div>
+    <div class="decision"><h3>2 · Graded prices</h3><p>No free source shows PSA prices or population inside the app.</p><p class="rec">Recommendation: manual graded entries plus the sold-listings link for now. Revisit if you'll pay for a data feed.</p></div>
+    <div class="decision"><h3>3 · Tab bar</h3><p>The screenshots have six tabs: Home, Search, Shop, Social, Portfolio, Profile. P3 planned three or four tabs.</p><p class="rec">Recommendation: Home, Search, centre Scan, Portfolio, Profile. This also settles P3's open r1 / r2 layout choice.</p></div>
+    <div class="decision"><h3>4 · Several portfolios in the first version</h3><p>Supporting several portfolios from the start costs little in storage, and adding them later means migrating saved data.</p><p class="rec">Recommendation: build several portfolios into storage v1 and show one ("Main") until you create another.</p></div>
+  </div>
+</section>
+
+<footer>
+  <p>Saved as <code>design/plans/collector-roadmap.html</code> in the PokeWorth repo. Based on Collectr screenshots taken 7 Nov 2026; PokeWorth is not affiliated with Collectr, Nintendo or The Pokémon Company. Data source claims for TCGdex reflect what <code>src/services/tcgdex.service.ts</code> reads today; the Frankfurter API and graded-data availability need checking before P7 and P8.</p>
+</footer>
+
+</div>

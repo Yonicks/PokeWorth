@@ -399,3 +399,172 @@ entry because Expo Go has no `expo-text-extractor`. To read cards there too:
 
 Verified: `tsc` PASS, `expo lint` PASS; OCR.space demo key returns text for a card
 photo via curl. On-phone check pending (owner).
+
+## Collector roadmap (2026-11-07)
+
+Plan: `design/plans/collector-roadmap.html` (published as the "PokeWorth Collector
+Roadmap" artifact). It brings the portfolio, card detail, search and overview features
+from five Collectr reference screenshots into PokeWorth's own navy-and-gold design.
+
+### Decisions (owner, 2026-11-07)
+
+1. **Price history:** daily snapshots on the device first (P7). A scheduled server job
+   only if charts feel too thin later.
+2. **Graded cards:** manual entries (grader, grade, cert number, own value) plus the eBay
+   sold-listings link. No graded market prices or population until a data source exists.
+3. **Tab bar / P3 layout:** Home, Search, centre Scan button, Portfolio, Profile. This
+   replaces the open r1 / r2 choice; Shop and Social are out of scope.
+4. **Portfolios:** storage v1 supports several portfolios from the start; the UI shows
+   "Main" until the user creates another.
+
+### Step 1 · Tabs and tokens (branch `feat/collector-tabs`)
+
+- `src/theme/tokens.ts`: colours, spacing, radius and type from `design/home-spec.md` §2.
+- `src/components/icons.tsx`: line icons drawn with `react-native-svg` (added with
+  `npx expo install`; included in Expo Go).
+- `src/app/(tabs)/`: Home (scan button, Search Manually, recent scans), Search (name or
+  number, camera button, 2-column grid), Portfolio (placeholder until step 4), Profile
+  (version, data sources, disclaimer). The centre Scan button opens `/scan` above the tabs.
+- Root layout is dark-only with a light status bar; Confirm and Card Details text colours
+  fixed for the dark theme.
+
+Verified in Chrome at 375 × 812: tabs switch, centre button opens Scan, Search for
+"Charizard" returns a grid, Card Details reads on the dark theme. `tsc` PASS,
+`expo lint` PASS. Owner checked it on the phone: "Looks great".
+
+### Step 2 · Card detail (P2.2, P2.3)
+
+- `src/services/printings.service.ts`: one entry per printing from TCGdex
+  `variants_detailed` (e.g. Holofoil, Holofoil · Shadowless · 1st Edition, Reverse Holo),
+  each with only its own prices. TCGplayer market price first, then the Cardmarket trend;
+  Cardmarket `-holo` keys go to the reverse holo only (AC-P2.7). Change of today's
+  Cardmarket figure against its 7- and 30-day averages. Cards without
+  `variants_detailed` fall back to the old flat price rows.
+- `src/app/result.tsx` + `src/components/card-detail.tsx`: blurred-artwork hero under a
+  see-through header (tap for full screen), name / set / rarity · number, printing chips
+  above the price (AC-P2.4), price card with provider, currency and date (AC-P2.5),
+  "No price available" state (AC-P2.6), "View Sold Listings on eBay" (in-app browser),
+  card facts (HP, type, stage, rarity, illustrator, set, number).
+- `scripts/pricing-fixtures.ts`: 12 offline checks on trimmed real responses, including
+  Base Set Charizard holo = TCGplayer $987.13 and the 1st Edition shadowless printing.
+
+Not in this step (later roadmap steps): price chart (P7), graded tab (P8), add to
+portfolio and favourites (step 4), tappable set name (step 3).
+
+Verified in Chrome at 375 × 812 on `base1-4`: hero, $987.13 TCGplayer + €353.78
+Cardmarket with +13.4 % / −17.8 % changes, switching to 1st Edition shows €3,489.25,
+facts list. `tsc` PASS, `expo lint` PASS, pricing fixtures 12/12. On-phone check pending
+(owner).
+
+### Step 3 · Search and sets (P2.4)
+
+- `src/app/sets.tsx`: every physical set, newest first (TCGdex lists oldest first; TCG
+  Pocket sets are left out), with logo, card count and a name filter. Promo sets without
+  a printed total show how many cards exist.
+- `src/app/sets/[id].tsx`: set logo, series, release date, card count (+ secret cards)
+  and the set's cards in a 2-column grid.
+- Search tab: "Show Sets" button; the card grid is now the shared
+  `src/components/card-tile.tsx`, also used by set pages.
+- Card Details: the gold set name opens that set.
+- `tcgdex.service.ts`: `listSets`, `getSet`, `setLogoUrl` (WebP, about 4× smaller than
+  PNG). Hooks `useSets` (6 h cache) and `useSet` (1 h).
+
+Verified in Chrome at 375 × 812: Search → Show Sets lists sets newest first with logos;
+filter "Base Set" leaves 3; Base Set page shows "Base • January 9, 1999 • 102 cards" and
+its cards; Charizard → tapping "Base Set" opens `/sets/base1`. `tsc` PASS,
+`expo lint` PASS, OCR 21/21, pricing 12/12. On-phone check pending (owner).
+
+### Step 4 · Portfolio (P5.1–P5.5)
+
+- `src/services/collection.model.ts` (pure, tested): storage v1 `pokeworth.collection.v1`
+  with several portfolios ("Main" first), one entry per card + printing + portfolio,
+  quantity 1–999, condition (Near Mint by default), a price snapshot and favourites.
+  Corrupt or wrong-version data loads as an empty collection (AC-P5.1). Totals are kept
+  per currency and never added across currencies; unpriced copies are counted separately
+  (AC-P5.4). CSV export.
+- `src/services/collection.service.ts`: AsyncStorage load/save; writes run one at a time.
+  `src/hooks/use-collection.ts`: shared cache with instant (optimistic) updates.
+- Card Details: "Adding to: Main" with a −/qty/+ stepper per printing and a running
+  total (AC-P5.2), favourite star.
+- Search and set grids: quick + adds one copy of the card's main printing; tiles show
+  the owned quantity.
+- Portfolio tab: search, favourites filter, portfolio switcher (create a new one),
+  total per currency with hide/show, card count and unpriced count, Select → Remove
+  (tap twice) / Move to another portfolio, Export (share sheet, CSV), sort by value or
+  newest, pull-to-refresh prices through the query cache (AC-P5.5).
+- Home: portfolio total and Most Valuable (top 4) with View All.
+- `scripts/collection-fixtures.ts`: 21 offline checks.
+
+Verified in Chrome at 375 × 812: steppers on `base1-4` give 2 × Holofoil + 1 × 1st
+Edition and "Total $1,974.26 + €3,489.25"; quick + on Blastoise gives "Qty: 1"; Portfolio
+lists 3 entries with "$2,203.55 + €3,489.25 · 4 cards"; Select → Remove (twice) removes
+Blastoise; Home shows Most Valuable; data survives a page reload (AC-P5.6). `tsc` PASS,
+`expo lint` PASS, fixtures OCR 21/21, pricing 12/12, collection 21/21, iOS bundle builds.
+Not exercised in the browser: the portfolio switcher UI, Move, Export (share sheet) and
+pull-to-refresh (logic covered by fixtures). On-phone check pending (owner).
+
+Known limits: totals in USD and EUR are shown side by side until currency conversion
+(step 5); "By value" sorting compares amounts without converting currencies.
+
+### Step 5 · History, movers and currency (new P7)
+
+- `src/services/history.model.ts` (pure, tested): `pokeworth.history.v1`, one point per
+  day per printing (`cardId|printingId`) and per portfolio (totals per currency), capped
+  at 730 days and 1,500 series. Nothing is back-filled: TCGdex has no history, so charts
+  start on the day a card is first seen on this phone. A change of currency restarts a
+  series.
+- Recording: opening Card Details records today's price of each printing; every saved
+  collection change records today's portfolio value; once per calendar day (first open,
+  or returning to the app on a new day) all owned cards are refreshed and recorded
+  (`runDailySnapshot`, `useDailySnapshot` in the tabs layout); pull-to-refresh records too.
+- `src/components/price-chart.tsx`: line + area chart with low/high guides, start/end
+  dates, change over the range, 1M · 3M · 6M · 12M · MAX pills, and plain empty /
+  one-day states. Shown on Card Details for the selected printing and on Home for the
+  portfolio.
+- Currency: `src/services/currency.model.ts` (pure, tested) and `fx.service.ts` (ECB rate
+  via `api.frankfurter.dev/v1`, checked 2026-11-07: free, no key, CORS `*`, last rate kept
+  for offline). Profile → "Currency for totals": USD (default), EUR or Original. Portfolio
+  and Home totals convert and show the rate and its date; card prices keep their source
+  currency. "By value" sorting now compares in USD.
+- Movers (Home): owned printings that moved most against their 30-day Cardmarket average
+  (stored with each price snapshot as `vs7d` / `vs30d`).
+- `scripts/history-fixtures.ts`: 24 offline checks.
+
+Verified in Chrome at 375 × 812: opening Home ran today's snapshot (3 printing series +
+portfolio point, `lastDaily` 2026-11-07); Home total $5,870.01 with "converted at
+€1 = $1.1165 (ECB, 2026-11-06)"; Movers +42.1 % / −17.8 %; one-day chart says history
+starts today; with six injected sample points (removed afterwards) the Card Details
+chart draws with guides $902.50 / $987.13 and +9.4 % 1M; EUR setting gives €5,257.51.
+`tsc` PASS, `expo lint` PASS, fixtures OCR 21/21, pricing 12/12, collection 21/21,
+history 24/24, iOS bundle builds. On-phone check pending (owner).
+
+Known limits: past days' portfolio values are converted at today's rate; the per-card
+"Adding to" total on Card Details is not converted (fixed in step 6).
+
+### Step 6 · Graded cards (new P8)
+
+- Collection model: graded copies are their own entries (`portfolio|card|graded:<slot>`,
+  quantity 1) with grader, grade and optional cert number; condition reads e.g. "PSA 10".
+  The value is the user's own ("Your value"); the daily price refresh never overwrites
+  it, and moving a graded copy never merges it with raw copies. Same grader + cert
+  number cannot be added twice. CSV gains Grader, Grade and Cert columns.
+- `src/components/graded-form.tsx`: printing, grader (PSA, BGS, CGC, SGC, TAG, ACE),
+  grade (10 to 1 with halves), cert number, value in USD or EUR, inline errors, and
+  "See sold PSA 10 copies on eBay" for the chosen grade (`src/services/links.ts`).
+- Card Details "Adding to" panel: Ungraded steppers, Graded list with two-tap remove,
+  "Add a graded card"; its total now includes graded values and uses the display
+  currency.
+- Portfolio tiles show the grade in gold and "Your value".
+- No graded market prices, population or gem rate: there is still no free source
+  (decision 2).
+- `scripts/collection-fixtures.ts`: 13 more checks (34 in all).
+
+Verified in Chrome at 375 × 812 on `base1-4`: cert "1" is rejected with "Use the 4–20
+letters or digits from the label."; PSA 10, cert 12345678, $37,587.74 is added and shows
+"Cert 12345678 · $37,587.74 your value"; the panel total becomes $43,457.75; the
+Portfolio shows the PSA 10 tile and $43,457.75 · 4 cards. `tsc` PASS, `expo lint` PASS,
+fixtures OCR 21/21, pricing 12/12, collection 34/34, history 24/24, iOS bundle builds.
+Not exercised in the browser: the eBay grade link (popups are blocked in the test pane).
+On-phone check pending (owner).
+
+All six collector-roadmap steps are built on `feat/collector-tabs`.

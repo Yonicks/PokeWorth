@@ -214,7 +214,7 @@ const styles = StyleSheet.create({
   thumb: { width: 60, height: 84, borderRadius: 4 },
   thumbPlaceholder: { backgroundColor: '#d1d1d6' },
   candidateInfo: { flex: 1, justifyContent: 'center' },
-  candidateName: { fontSize: 17, fontWeight: '600' },
+  candidateName: { fontSize: 17, fontWeight: '600', color: '#fefefe' },
   candidateMeta: { fontSize: 13, color: '#8e8e93', marginTop: 2 },
   candidateScore: { fontSize: 13, color: '#208AEF', marginTop: 4 },
   moreButton: { paddingVertical: 16, alignItems: 'center' },

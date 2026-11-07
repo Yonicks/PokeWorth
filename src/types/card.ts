@@ -24,6 +24,13 @@ export interface SetBrief {
   };
 }
 
+/** Full set record from /v2/en/sets/{id}. */
+export interface SetDetail extends SetBrief {
+  releaseDate?: string;
+  serie?: { id: string; name: string };
+  cards: CardBrief[];
+}
+
 /** Which printings exist for a card. */
 export interface CardVariants {
   normal?: boolean;
@@ -77,6 +84,19 @@ export interface Card extends CardBrief {
   /** Printed attack and ability names; used to tell reprints apart. */
   attacks?: { name: string }[];
   abilities?: { name: string }[];
+  /** e.g. "Basic", "Stage2". */
+  stage?: string;
+  /** One entry per printing, each with its own provider prices. */
+  variants_detailed?: VariantDetail[];
+}
+
+/** One `variants_detailed` entry (only the fields PokeWorth reads). */
+export interface VariantDetail {
+  type?: string;
+  subtype?: string;
+  stamp?: string[];
+  variantId?: string;
+  pricing?: { cardmarket?: ProviderPricing | null; tcgplayer?: ProviderPricing | null };
 }
 
 /** What we managed to read off a photographed card. */

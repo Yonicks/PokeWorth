@@ -631,3 +631,43 @@ adds: number lookup across sets of the read size (Misty's Lapras read `050/182` 
 cleanup ("Mega Mawile ev", "Pikachuex"), short-prefix search ("Butteri"), top-line
 preference (attack names "Collect", "Heat Blast"), and OCR rotation detection (sideways
 Darkrai & Cresselia). 30 OCR requests used.
+
+### Step 2 · Batch reading and matcher fixes (branch `feat/binder-scan`)
+
+- `src/services/binder-scan.model.ts` (pure): statuses Sure / Check / Not found / Empty /
+  Error; only Sure starts ticked (decision 3); a cancellable queue (3 at a time, results in
+  pocket order); plain error texts, incl. the OCR rate limit.
+- `src/services/binder-scan.service.ts`: `readPocket` / `readPockets` through the existing
+  `recognizeCardText` and `matchCard`; failures become Error pockets.
+- Matcher (`card-matcher.service.ts`), also used by single-card scans:
+  - name variants tried in order, max 8 searches: as read, trailing symbols removed
+    ("Pikachu ex®"), ex suffix cleaned ("ev", "e", glued "ex"), apostrophe restored
+    ("Mistys" → "Misty's"), noisy first word dropped ("My", "N.", "STAGEZ"), short prefix
+    for a cut-off name ("Butteri" → "Butte"); a stage label glued to the name is stripped
+    from the line, and OCR misreads "basis", "stagez", "abilicy", "supporsa" count as
+    labels;
+  - an OCR guess only counts when a result resembles it (starts with it or ≥ 60 %
+    similar), so an attack name no longer finds an unrelated card ("Collect" → "Pokémon
+    Collector");
+  - a read collector number + set size is looked up in every set of that size
+    (`getCardInSet`, leading zeros dropped: TCGdex finds `sv03.5/50` but not
+    `base1/004`).
+- Cloud OCR asks for rotation detection (`detectOrientation`).
+- `scripts/fixtures/binder-ocr.json`: OCR text (no photos) of the owner's 27 pockets,
+  recorded with the owner's own OCR.space key (the shared demo key was rate-limited, HTTP
+  429, after step 0). The key lives in the git-ignored `.env.local` as
+  `EXPO_PUBLIC_OCR_SPACE_KEY`.
+- `scripts/binder-live-check.ts` (needs the network): page scores against the plan target.
+
+| Live check on the owner's pages | Before (step 0, option A) | After step 2 |
+| --- | --- | --- |
+| Right name first | 18 / 27 (5 · 8 · 5) | **25 / 27 (9 · 9 · 7)** — every page ≥ 7 / 9 |
+| Sure | 6, none wrong | 8, none wrong |
+
+The two misses are now honest "Not found" (Froakie: no name in the text; the sideways
+Darkrai & Cresselia LEGEND half: unreadable). "Right" means the right card name; some
+Check pockets still rank an older printing first (Gyarados hgss1-4 instead of Misty's
+Gyarados, Crobat δ, Claydol ex5-2) because the OCR lost the trainer name and TCGdex cannot
+search by attack. The review grid (step 4) lets the user pick the printing.
+Fixtures: binder 42/42, OCR 21/21, pricing 12/12, collection 34/34, history 24/24;
+`tsc` PASS, `expo lint` PASS. Expo restarted so the app uses the owner's OCR key.

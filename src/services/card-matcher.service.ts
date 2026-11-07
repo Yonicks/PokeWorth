@@ -24,6 +24,8 @@ const NAME_STOPWORDS = new Set([
   'trainer', 'supporter', 'item', 'stadium', 'tool', 'energy',
   'evolves from', 'put onto', 'ability', 'weakness', 'resistance',
   'retreat', 'illus', 'pokemon', 'pokemon lv',
+  // Common OCR misreads of the same labels, seen on real binder pages.
+  'basis', 'stagez', 'abilicy', 'supporsa',
 ]);
 
 function looksLikeName(line: string): boolean {
@@ -113,8 +115,12 @@ export function parseOcrLines(rawLines: string[]): ParsedCardText {
  * artwork and energy symbols ("ned", "car i") is usually lowercase, so
  * capitalised lines come first, each group in reading order.
  */
+/** Stage labels OCR often glues to the name on the same line ("STAGEZ Blaziken"). */
+const STAGE_PREFIX_RE = /^(basic|basis|stage\s?[12z]|stagez)\s+(?=\S)/i;
+
 export function nameCandidates(rawLines: string[]): string[] {
-  const plausible = [...new Set(rawLines.map((l) => l.trim()).filter(looksLikeName))];
+  const lines = rawLines.map((l) => l.trim().replace(STAGE_PREFIX_RE, ''));
+  const plausible = [...new Set(lines.filter(looksLikeName))];
   const capitalised = plausible.filter((l) => /^[A-Z]/.test(l));
   return [...capitalised, ...plausible.filter((l) => !/^[A-Z]/.test(l))];
 }
@@ -133,24 +139,27 @@ function isNoiseWord(word: string): boolean {
 
 /**
  * Spellings worth searching for one OCR name, most faithful first:
- * the line itself, a cleaned "ex" suffix, without a noisy first word, the
- * last word on its own, and a short prefix for a cut-off name.
+ * the line itself, without trailing symbols, a cleaned "ex" suffix, without
+ * a noisy first word, and a short prefix for a cut-off name.
  */
 export function nameVariants(name: string): string[] {
-  const clean = name.replace(/\s+/g, ' ').trim();
-  const out = [clean];
+  const raw = name.replace(/\s+/g, ' ').trim();
+  // Symbols stuck to the end ("Pikachu ex®", "Crobat ~") break the search.
+  const clean = raw.replace(/[^\p{L}\p{N})]+$/u, '').trim() || raw;
+  const out = [raw, clean];
   // "Mega Mawile ev" / "Gengar eX" / "Gouging Fire e" -> "... ex"; "Pikachuex" -> "Pikachu ex".
   const ex = clean.replace(/\s+(ev|ex|e x|e)$/i, ' ex').replace(/([a-z]{4,})ex$/, '$1 ex');
   out.push(ex);
   const words = ex.split(' ');
   const exSuffix = words[words.length - 1].toLowerCase() === 'ex';
   const core = exSuffix ? words.slice(0, -1) : words;
+  // "Mistys Lapras" -> "Misty's Lapras": OCR often drops the apostrophe.
+  const possessive = /^([A-Z][a-z]{2,})s\s+(\S.*)$/.exec(ex);
+  if (possessive) out.push(`${possessive[1]}'s ${possessive[2]}`);
+  // "STAGEZ Blaziken", "My Gyarados" (Misty's), "N. Reshiram": drop the noisy word.
+  // Only the first word: dropping words freely turned "Draw a card" into "card".
   if (core.length > 1 && isNoiseWord(core[0])) {
     out.push([...core.slice(1), ...(exSuffix ? ['ex'] : [])].join(' '));
-  }
-  if (core.length > 1) {
-    const last = core[core.length - 1];
-    if (last.length >= 4) out.push(last);
   }
   const first = core.find((w) => w.length >= 6 && /^[A-Za-z]/.test(w));
   if (first) out.push(first.slice(0, 5));
@@ -161,6 +170,15 @@ export function nameVariants(name: string): string[] {
 export function searchOrder(first: string, guesses: string[]): string[] {
   const order = [first, ...guesses.filter((g) => g !== first)].flatMap(nameVariants);
   return [...new Set(order)].slice(0, MAX_NAME_ATTEMPTS);
+}
+
+/**
+ * Whether a search term really names one of the results: a result starts
+ * with it (a cut-off "Butte" → "Butterfree") or is at least 60 % similar.
+ */
+export function resembles(term: string, results: { name: string }[]): boolean {
+  const t = normalize(term);
+  return results.some((r) => normalize(r.name).startsWith(t) || similarity(term, r.name) >= 0.6);
 }
 
 /** At most this many sets are checked for one collector number. */
@@ -327,7 +345,10 @@ export async function matchCard(parsed: ParsedCardText): Promise<MatchOutcome> {
     : [];
   for (const attempt of tries) {
     const found = await searchCardsByName(attempt);
-    if (found.length > 0) {
+    // The catalog search matches any name containing the text, so an attack
+    // name ("Collect") finds "Pokémon Collector". An OCR guess only counts
+    // when some result really resembles it.
+    if (found.length > 0 && (!fromOcr || resembles(attempt, found))) {
       briefs = found;
       parsed = { ...parsed, name: attempt };
       break;

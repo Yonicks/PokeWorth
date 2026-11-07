@@ -1,1 +1,475 @@
-{"note": "Placeholder until the step 2 recording finishes.", "pockets": []}
+{
+ "note": "OCR.space Engine 2 text (detectOrientation) of the owner's three binder pages, 3×3 pockets, 4% inset. Recorded 2026-11-07 for binder scan step 2. Text only; no photos.",
+ "pockets": [
+  {
+   "page": "page1-easy",
+   "pocket": 0,
+   "expected": "Snorlax",
+   "lines": [
+    "Hop's Snorlax",
+    "- 150 *",
+    "Abilicy",
+    "Extra Helpings",
+    "Attacks used by your Hop's Pokemon do 30 more damage",
+    "to your opponents Active Pokemon (before applying",
+    "Weakness and Resistance). The effect of Extra Helpings",
+    "doesn't scack",
+    "This: Poi",
+    "Dynamic Press",
+    "son also does 80 damage to itself.",
+    "140",
+    "$×2"
+   ]
+  },
+  {
+   "page": "page1-easy",
+   "pocket": 1,
+   "expected": "Keldeo",
+   "lines": [
+    "Keldeo",
+    "- 110",
+    "Shoot Through",
+    "20",
+    "This attack also does 20 damage to 1 of your opponere's",
+    "Benched Polemon. (Don't apply Weaknest and Resistance",
+    "for Benched Pokernon,",
+    "Reflect Energy",
+    "70",
+    "Move an Energy from this Pokemon to I of your Benched",
+    "Pokemon",
+    "*",
+    "Dี GiN 019/085 *"
+   ]
+  },
+  {
+   "page": "page1-easy",
+   "pocket": 2,
+   "expected": "Butterfree",
+   "lines": [
+    "Butteri",
+    "- 120€",
+    "Scale Hurricane",
+    "Flip 4 coins. This atack does 60 de",
+    "If at least 2 of them are head, your oppos",
+    "Pokemon is nw Paralyzedd",
+    "60×",
+    "✕2"
+   ]
+  },
+  {
+   "page": "page1-easy",
+   "pocket": 3,
+   "expected": "Crobat",
+   "lines": [
+    "Crobat",
+    "- 130 ~",
+    "Once during your turn, if this Pokemon is in the Active Spot.",
+    "Ability. Search your deck for a card. Shuffle",
+    "card on top of it",
+    "Poison Sound Wave",
+    "80",
+    "3 Acove Pokemon is now Confused and",
+    "Cx2",
+    "2310"
+   ]
+  },
+  {
+   "page": "page1-easy",
+   "pocket": 4,
+   "expected": "Lapras",
+   "lines": [
+    "BASIC",
+    "Mistys Lapras",
+    "₩ 110",
+    "Swim Together",
+    "Search your deck for up to 3 Misty's Pokemon, reveal them.",
+    "and put them into your hand. Then, shuffle your deck.",
+    "Surf",
+    "60",
+    "4x2",
+    "1 DE a 050/182 •",
+    "com its back. It may",
+    "it a good mood",
+    "٠٣٧ ٤٥"
+   ]
+  },
+  {
+   "page": "page1-easy",
+   "pocket": 5,
+   "expected": "Chesnaught",
+   "lines": [
+    "STAGE2",
+    "Chesnaught",
+    "- 180",
+    "AbRicy Needly Armor",
+    "If this Pokemon is in the Active Spot and is damaged by an",
+    "attack from your opponent's Pokemon leven if this biumer",
+    "is Knocked Out, place 3 damage counters on the Arracking",
+    "Pokemon for each • Energy atached to this Pokemon",
+    "Impound",
+    "160",
+    "During your opponen",
+    "ext cum, the Defending Polemon",
+    "can't retreat",
+    "noT 11096 *"
+   ]
+  },
+  {
+   "page": "page1-easy",
+   "pocket": 6,
+   "expected": "Gyarados",
+   "lines": [
+    "My Gyarados",
+    "- 180€",
+    "Splashing Panic",
+    "70×",
+    "Discard the cop 7 cards of your deck, and this astack does",
+    "70 damage for each Misty's Pokemon that you discarded",
+    "aths way",
+    "Waterfall",
+    "120"
+   ]
+  },
+  {
+   "page": "page1-easy",
+   "pocket": 7,
+   "expected": "Blaziken",
+   "lines": [
+    "STAGEZ Blaziken",
+    "-D 170 €",
+    "Heat Blast",
+    "70",
+    "Inferno Kick Furry",
+    "120",
+    "Discard 2 Energy from the Polemon. The atack ase does",
+    "120 damage to 1 of your opponens Banched Posemon.",
+    "(Dan® appe Welchess and Resistance for Benched Pokernon",
+    "มี ชล"
+   ]
+  },
+  {
+   "page": "page1-easy",
+   "pocket": 8,
+   "expected": "Zamazenta",
+   "lines": [
+    "BASIC",
+    "Zamazenta",
+    "Te 130 G",
+    "ののネ",
+    "Strong Bast",
+    "70"
+   ]
+  },
+  {
+   "page": "page2-cut-angle-glare",
+   "pocket": 0,
+   "expected": "Ninetales",
+   "lines": [
+    "Ninetales ex",
+    "260",
+    "Heat Wave",
+    "ir's Active Pol",
+    "non is now Burned",
+    "irrored Flames",
+    "30",
+    "80+"
+   ]
+  },
+  {
+   "page": "page2-cut-angle-glare",
+   "pocket": 1,
+   "expected": "Mawile",
+   "lines": [
+    "Mega Mawile ev",
+    "$270 C",
+    "• Gobble Down",
+    "attack does 80 damage for 1",
+    "Huge Bite",
+    "80₽",
+    "Your",
+    "260",
+    "i any di",
+    "浦30",
+    "体：30",
+    "I MEGN 094/132"
+   ]
+  },
+  {
+   "page": "page2-cut-angle-glare",
+   "pocket": 2,
+   "expected": "Gouging Fire",
+   "lines": [
+    "Gouging Fire e",
+    "Ancient",
+    "Heat Blast",
+    "Blaze Blitz",
+    "60",
+    "260",
+    "Tive Spor",
+    "Pakémon eX rule",
+    "13 1e1/162"
+   ]
+  },
+  {
+   "page": "page2-cut-angle-glare",
+   "pocket": 3,
+   "expected": "Gengar",
+   "lines": [
+    "Gengar eX",
+    "$280",
+    "If this Pokemon is Knocked Out by damage from an atcack",
+    "from your opponent's Pokemon, flip a coin. If heads, the",
+    "crackung Pokemon is Knocked Out.",
+    "Chaotic Pain",
+    "3 damage counters on 1 of your opponent's",
+    "Pakémon EX rule",
+    "1 38C0 033/1251"
+   ]
+  },
+  {
+   "page": "page2-cut-angle-glare",
+   "pocket": 4,
+   "expected": "Sliggoo",
+   "lines": [
+    "STAGE 1",
+    "Sliggoo",
+    "RP 90 C",
+    "Gentle Slap",
+    "70",
+    "weakness",
+    "tilas. asparo",
+    "• CRIm 095/086",
+    "resistance",
+    "retreat * * *",
+    "I tour hornsate a high performance radar",
+    "System it uses them to sense sounds and",
+    "smells, rather than using cars or @ nose",
+    "00026 Pokemon / Nintendo / Creatures / GAME FREAX"
+   ]
+  },
+  {
+   "page": "page2-cut-angle-glare",
+   "pocket": 5,
+   "expected": "Black Belt's Training",
+   "lines": [
+    "Supporter",
+    "Black Belt's Training",
+    "TRANCE",
+    "During this turn, attacks used by your Pokemen, da 48 mas",
+    "damage to your opponent Acrive Pokemen EX fratra",
+    "applyng Weakness and Resistones",
+    "You may play only I Supporter card",
+    "H ASC 255/217"
+   ]
+  },
+  {
+   "page": "page2-cut-angle-glare",
+   "pocket": 6,
+   "expected": "Watchog",
+   "lines": [
+    "Watchog",
+    "$100本",
+    "Snap Inspection",
+    "Hip 3 coins ffany of them are heads, your oppenent reveals",
+    "ther hand. For each freads, cheose a card you find there",
+    "and shuffle it into your opponents deck",
+    "Low Kick",
+    "50",
+    "D CA C32708O 17"
+   ]
+  },
+  {
+   "page": "page2-cut-angle-glare",
+   "pocket": 7,
+   "expected": "Greninja",
+   "lines": [
+    "STAGEZ",
+    "Mega Greninja",
+    "Evolves from Frogadier.",
+    "350 6",
+    "The Mega Evolved form of",
+    "Grenitya",
+    "Abilicy",
+    "›Mortal Shuriken",
+    "Once during your tum, if the Pollion is in the Active spot",
+    "you may discard a Basic & Enengy card from your hand in",
+    "order to use this Ability Flice 6 damage sounters on i of",
+    "your opponents Pokamon.",
+    "Ninja Spinner",
+    "120+",
+    "fee may put a & Energy ausched to this Follmoninte",
+    "Your hand and is",
+    "e this astack do 80 more da",
+    "Mega fream OX roke",
+    "B, CRIN 0227086 *4"
+   ]
+  },
+  {
+   "page": "page2-cut-angle-glare",
+   "pocket": 8,
+   "expected": "Ariana",
+   "lines": [
+    "Supporsa",
+    "Team Rocket's Ariana",
+    "your Pokenon to ply to Than Recker Poke",
+    "cards anil yem have l carts in your haad taxined",
+    "lou may play only"
+   ]
+  },
+  {
+   "page": "page3-full-art",
+   "pocket": 0,
+   "expected": "Surfing Beach",
+   "lines": [
+    "Stadium",
+    "Surfing Beach",
+    "TRAINER",
+    "Once during each player turns that player may swatchither",
+    "Active • Pokemon with I of their Benched Pokenion",
+    "1 OIN 110/O5ST"
+   ]
+  },
+  {
+   "page": "page3-full-art",
+   "pocket": 1,
+   "expected": "Frogadier",
+   "lines": [
+    "STAGE T",
+    "Frogadier",
+    "$1000",
+    "Summoning Jutsu",
+    "Search your deck for up to 3 Pokerion, toveal them, and",
+    "put them into your hand. Then, shuflo your deck",
+    "Aqua Edge",
+    "50",
+    "Headaceaar",
+    "vetreat",
+    "• CRIN 089/086"
+   ]
+  },
+  {
+   "page": "page3-full-art",
+   "pocket": 2,
+   "expected": "Froakie",
+   "lines": [
+    "Draw & card",
+    "WeAkness",
+    "les, Susona Mapa",
+    "Collect",
+    "Water Gun",
+    "10"
+   ]
+  },
+  {
+   "page": "page3-full-art",
+   "pocket": 3,
+   "expected": "Reshiram",
+   "lines": [
+    "BASIC",
+    "N. Reshiram",
+    "AD 130 C",
+    "Powerful Rage",
+    "This attack opes 20 damage for each damage counter en",
+    "this Pokemon",
+    "* * Virtuous Flame",
+    "170",
+    "162/150"
+   ]
+  },
+  {
+   "page": "page3-full-art",
+   "pocket": 4,
+   "expected": "Pikachu",
+   "lines": [
+    "BASIS",
+    "Pikachu ex®",
+    "IP 190",
+    "Pika-Pika Parade",
+    "Search your deck for any number of Basic Pokémon and",
+    "put them onto your Bench. Then, shuffle your deck.",
+    "Thunderbolt",
+    "200",
+    "Discard all Energy from this Pokémon.",
+    "weakness 82",
+    "Hion. Lontaro",
+    "J 30(4 139/128 50",
+    "tetistance",
+    "retreat",
+    "Pokémon OX rule",
+    "When your Pokemon OX",
+    "• takes 2 Prixo cards."
+   ]
+  },
+  {
+   "page": "page3-full-art",
+   "pocket": 5,
+   "expected": "Iron Boulder",
+   "lines": [
+    "BASIC",
+    "Iron Boulder ex",
+    "Repulsor Axe",
+    "60",
+    "During your opponent's next turn, if this Pokemon is",
+    "damaged by anattack (even if it is Knocked Out), put 8 damage",
+    "counters on the Attacking Pokemon.",
+    "Power Stomp",
+    "200",
+    "Discard 2 Energy from this Pokemon.",
+    ")x 2",
+    "Illus. Sban Grophics",
+    "217/162",
+    "resistance",
+    "Pokemon eX rule"
+   ]
+  },
+  {
+   "page": "page3-full-art",
+   "pocket": 6,
+   "expected": "Claydol",
+   "lines": [
+    "STAGE!",
+    "Claydol",
+    "HP 120 C",
+    "Devolution Ray",
+    "50",
+    "If your opponents Active Pokémonts an evelved Pekémon,",
+    "devolve it by putting the highest Stage Evelution card on",
+    "tinto your opponent's hand.",
+    "• CRI» 0927086 9"
+   ]
+  },
+  {
+   "page": "page3-full-art",
+   "pocket": 7,
+   "expected": "Mewtwo",
+   "lines": [
+    "BASIC",
+    "Mewtwo",
+    "P230 •",
+    "Photon Bullets",
+    "his attack does 39 damage to each of your opponent!",
+    "ekemen EX. (Don't apply Weakness and Resistance fo",
+    "Benched Pokémon)",
+    "900",
+    "Psychic Powers",
+    "230",
+    "Paring your next turn, this Pekémen caft une attacka.",
+    "2082",
+    "Tone CAP",
+    "5 30x 150/239",
+    "30- مسقد",
+    "Pokémon EX rule",
+    "wual Co"
+   ]
+  },
+  {
+   "page": "page3-full-art",
+   "pocket": 8,
+   "expected": "Darkrai",
+   "lines": [
+    "ra-suc",
+    "RP150"
+   ]
+  }
+ ]
+}

@@ -21,7 +21,13 @@ import {
   summarize,
   textChars,
 } from '../src/services/binder-scan.model';
-import { nameVariants, searchOrder, type MatchOutcome } from '../src/services/card-matcher.service';
+import {
+  nameCandidates,
+  nameVariants,
+  resembles,
+  searchOrder,
+  type MatchOutcome,
+} from '../src/services/card-matcher.service';
 
 let failed = 0;
 let total = 0;
@@ -146,7 +152,18 @@ check('ex variants: "ev", "e" and glued "ex" become " ex"',
     nameVariants('Pikachuex').includes('Pikachu ex'),
   JSON.stringify([nameVariants('Mega Mawile ev'), nameVariants('Pikachuex')]));
 check('noise in front of the name is dropped', nameVariants('STAGEZ Blaziken').includes('Blaziken') && nameVariants('N. Reshiram').includes('Reshiram'));
-check('trainer prefix misread: last word is tried', nameVariants('My Gyarados').includes('Gyarados'));
+check('trainer prefix misread: noisy first word is dropped', nameVariants('My Gyarados').includes('Gyarados'));
+check('a generic last word is never searched on its own ("Draw & card")', !nameVariants('Draw & card').includes('card'),
+  JSON.stringify(nameVariants('Draw & card')));
+check('a stage label glued to the name is stripped, not the whole line',
+  nameCandidates(['STAGEZ Blaziken', 'Heat Blast'])[0] === 'Blaziken' && nameCandidates(['BASIS', 'Pikachu ex®'])[0] === 'Pikachu ex®',
+  JSON.stringify(nameCandidates(['STAGEZ Blaziken', 'Heat Blast'])));
+check('an attack name does not count as finding "Pokémon Collector"',
+  !resembles('Collect', [{ name: 'Pokémon Collector' }]) && resembles('Butte', [{ name: 'Butterfree' }]) && resembles('Gengar eX', [{ name: 'Gengar ex' }]));
+check('a dropped apostrophe is put back ("Mistys Lapras")', nameVariants('Mistys Lapras').includes("Misty's Lapras"),
+  JSON.stringify(nameVariants('Mistys Lapras')));
+check('trailing symbols are stripped before the ex cleanup', nameVariants('Pikachu ex®').includes('Pikachu ex'),
+  JSON.stringify(nameVariants('Pikachu ex®')));
 check('cut-off name: short prefix is tried', nameVariants('Butteri').includes('Butte'));
 check('the original spelling is always tried first', nameVariants("Misty's Lapras")[0] === "Misty's Lapras");
 check('search order: first guess variants, then other lines, capped at 8',

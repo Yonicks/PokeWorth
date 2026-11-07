@@ -146,7 +146,7 @@ footer p { font-size: 13px; color: var(--fg-3); }
 <div class="wrap">
 
 <header>
-  <div class="eyebrow">Feature plan · steps 0–1 done · option A chosen</div>
+  <div class="eyebrow">Feature plan · steps 0–2 done · 25 of 27 pockets right</div>
   <h1>Binder <span>Page Scan</span></h1>
   <p>Take one photo of a binder page. PokeWorth splits it into pockets, reads every card, and shows you a review grid with what it found. You fix anything it got wrong, then add all the cards to your portfolio in one tap. Nothing is added until you confirm.</p>
   <div class="meta">
@@ -283,6 +283,18 @@ footer p { font-size: 13px; color: var(--fg-3); }
     <li><strong>Attack names taken as card names.</strong> Froakie "Collect", Blaziken "Heat Blast": prefer the line nearest the top of the pocket.</li>
     <li><strong>The sideways card</strong> (Darkrai &amp; Cresselia LEGEND): ask the OCR to detect rotation.</li>
   </ul>
+
+  <h3>After step 2 · same pages, same pockets</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Page</th><th>Step 0 (option A)</th><th>After the step 2 matcher fixes</th></tr></thead>
+    <tbody>
+      <tr><td>1 · easy</td><td>5 of 9 · 2 Sure</td><td><strong>9 of 9</strong> · 3 Sure</td></tr>
+      <tr><td>2 · cut off, angled, glare</td><td>8 of 9 · 2 Sure</td><td><strong>9 of 9</strong> · 3 Sure</td></tr>
+      <tr><td>3 · full art</td><td>5 of 9 · 2 Sure</td><td><strong>7 of 9</strong> · 2 Sure</td></tr>
+      <tr><td>All 27</td><td>18 right · 0 Sure-but-wrong</td><td><strong>25 right · 8 Sure · 0 Sure-but-wrong</strong></td></tr>
+    </tbody>
+  </table></div>
+  <p>Every page now meets the 7-of-9 target. The two misses are honest <em>Not found</em>: Froakie's text has no name in it, and the sideways card couldn't be read even with rotation detection. Previously both gave a wrong guess. "Right" means the right card name. A few Check pockets still show an older printing first, such as the Base-era Gyarados instead of Misty's Gyarados, because the OCR lost the trainer name and the catalog can't search by attack. Picking the printing on the review grid (step 4) covers this.</p>
 </section>
 
 <section>
@@ -313,7 +325,7 @@ footer p { font-size: 13px; color: var(--fg-3); }
   <ol class="steps">
     <li><div><h3>Try it on real pages <span class="tag ok">done</span></h3><p>You send 3 photos of real binder pages: one easy, one with glare, one at a slight angle. I run options A and B on them outside the app and record, pocket by pocket, whether the right card came out on top, plus the time and request count.</p><p class="why">This decides the OCR option and the pocket inset before any screens are built.</p></div></li>
     <li><div><h3>Pocket grid and cropping <span class="tag ok">built</span></h3><p>A pure layout model for 2×2, 3×3 and 3×4 that turns a photo size into pocket rectangles with an inset. A crop service on top of it. Offline tests for the maths.</p></div></li>
-    <li><div><h3>Batch reading</h3><p>A queue that reads and matches pockets three at a time, with progress, cancel, retry for failed pockets and the empty check. Each pocket gets Sure, Check, Not found or Empty. Also the matcher fixes from step 0: number lookup, last-word and prefix fallbacks, ex suffixes, top-line preference and rotation. Tested with recorded OCR text from your three pages.</p></div></li>
+    <li><div><h3>Batch reading <span class="tag ok">built</span></h3><p>A queue that reads and matches pockets three at a time, with progress, cancel, retry for failed pockets and the empty check. Each pocket gets Sure, Check, Not found or Empty. Also the matcher fixes from step 0: number lookup, last-word and prefix fallbacks, ex suffixes, top-line preference and rotation. Tested with recorded OCR text from your three pages.</p></div></li>
     <li><div><h3>Binder camera</h3><p>A Card / Binder page switch on the Scan screen, the layout picker, the gold grid guide, the glare tip and photo import. Also reachable from the Portfolio tab.</p></div></li>
     <li><div><h3>Review grid</h3><p>Pockets laid out like your page, each with a status colour. Tapping a pocket shows the top 3 matches, search by hand, the printing choice, or skip. Sure pockets start ticked; Check pockets you tick yourself.</p></div></li>
     <li><div><h3>Add to portfolio</h3><p>A tested "add many" in the collection model: duplicates on a page are merged, cards you already own have their quantity raised, and it ends with a summary ("Added 7 cards, $412.30") and <strong>Scan next page</strong>.</p></div></li>

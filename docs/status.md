@@ -430,4 +430,28 @@ from five Collectr reference screenshots into PokeWorth's own navy-and-gold desi
 
 Verified in Chrome at 375 × 812: tabs switch, centre button opens Scan, Search for
 "Charizard" returns a grid, Card Details reads on the dark theme. `tsc` PASS,
-`expo lint` PASS. On-phone check pending (owner).
+`expo lint` PASS. Owner checked it on the phone: "Looks great".
+
+### Step 2 · Card detail (P2.2, P2.3)
+
+- `src/services/printings.service.ts`: one entry per printing from TCGdex
+  `variants_detailed` (e.g. Holofoil, Holofoil · Shadowless · 1st Edition, Reverse Holo),
+  each with only its own prices. TCGplayer market price first, then the Cardmarket trend;
+  Cardmarket `-holo` keys go to the reverse holo only (AC-P2.7). Change of today's
+  Cardmarket figure against its 7- and 30-day averages. Cards without
+  `variants_detailed` fall back to the old flat price rows.
+- `src/app/result.tsx` + `src/components/card-detail.tsx`: blurred-artwork hero under a
+  see-through header (tap for full screen), name / set / rarity · number, printing chips
+  above the price (AC-P2.4), price card with provider, currency and date (AC-P2.5),
+  "No price available" state (AC-P2.6), "View Sold Listings on eBay" (in-app browser),
+  card facts (HP, type, stage, rarity, illustrator, set, number).
+- `scripts/pricing-fixtures.ts`: 12 offline checks on trimmed real responses, including
+  Base Set Charizard holo = TCGplayer $987.13 and the 1st Edition shadowless printing.
+
+Not in this step (later roadmap steps): price chart (P7), graded tab (P8), add to
+portfolio and favourites (step 4), tappable set name (step 3).
+
+Verified in Chrome at 375 × 812 on `base1-4`: hero, $987.13 TCGplayer + €353.78
+Cardmarket with +13.4 % / −17.8 % changes, switching to 1st Edition shows €3,489.25,
+facts list. `tsc` PASS, `expo lint` PASS, pricing fixtures 12/12. On-phone check pending
+(owner).

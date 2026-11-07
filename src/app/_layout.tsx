@@ -36,7 +36,18 @@ export default function RootLayout() {
           <Stack.Screen name="scan" options={{ title: 'Scan Card', headerShown: false }} />
           <Stack.Screen name="manual-entry" options={{ title: 'Enter Card Details' }} />
           <Stack.Screen name="confirm" options={{ title: 'Confirm Card' }} />
-          <Stack.Screen name="result" options={{ title: 'Card Details' }} />
+          <Stack.Screen
+            name="result"
+            options={{
+              // The artwork runs under a see-through header; only the back button shows.
+              title: 'Card Details',
+              headerTransparent: true,
+              headerTitle: '',
+              headerShadowVisible: false,
+              headerTintColor: colors.textPrimary,
+              headerBackButtonDisplayMode: 'minimal',
+            }}
+          />
         </Stack>
         <StatusBar style="light" />
       </ThemeProvider>

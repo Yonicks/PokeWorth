@@ -74,6 +74,9 @@ export interface Card extends CardBrief {
   set?: SetBrief;
   variants?: CardVariants;
   pricing?: CardPricing;
+  /** Printed attack and ability names; used to tell reprints apart. */
+  attacks?: { name: string }[];
+  abilities?: { name: string }[];
 }
 
 /** What we managed to read off a photographed card. */

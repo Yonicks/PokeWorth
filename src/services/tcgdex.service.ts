@@ -64,6 +64,24 @@ export async function getCard(id: string): Promise<Card> {
 /** Series whose sets are not physical cards (TCG Pocket is a phone game). */
 const DIGITAL_SERIES = ['tcgp'];
 
+let digitalSetsRequest: Promise<Set<string>> | null = null;
+
+/**
+ * Ids of digital-only sets (TCG Pocket: "A1", "B1a", ...). They never exist
+ * in a binder, but name searches return them, e.g. Hariyama "B1a-040".
+ */
+export function getDigitalSetIds(): Promise<Set<string>> {
+  digitalSetsRequest ??= Promise.all(
+    DIGITAL_SERIES.map((id) => get<{ sets: { id: string }[] }>(`/series/${id}`)),
+  )
+    .then((all) => new Set(all.flatMap((s) => s.sets.map((x) => x.id))))
+    .catch((error: unknown) => {
+      digitalSetsRequest = null;
+      throw error;
+    });
+  return digitalSetsRequest;
+}
+
 /**
  * All physical sets, newest first. TCGdex lists sets oldest first, so the
  * list is reversed; digital-only series are left out.

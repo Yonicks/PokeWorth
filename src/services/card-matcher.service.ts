@@ -9,6 +9,7 @@ import { normalize, similarity } from '../utils/text';
 import {
   getCard,
   getCardInSet,
+  getDigitalSetIds,
   getSetOrder,
   getSetSizes,
   searchCardsByName,
@@ -35,13 +36,23 @@ const NAME_STOPWORDS = new Set([
   'basis', 'stagez', 'abilicy', 'supporsa',
 ]);
 
+/**
+ * Labels that only ever start a chrome line ("Stage 2 Evolves from ...",
+ * "Weakness x2"). Words like "Energy", "Pokémon", "Item", "Trainer", "Tool"
+ * and "Stadium" are NOT here: real names start with them ("Energy Retrieval",
+ * "Pokémon Center Lady", "Trainer's Mail"), so they only count as chrome when
+ * they are the whole line.
+ */
+const CHROME_PREFIXES = [
+  'basic', 'basis', 'stage 1', 'stage 2', 'stage1', 'stage2', 'stagez', 'vmax', 'vstar',
+  'evolves from', 'put onto', 'ability', 'abilicy', 'weakness', 'resistance', 'retreat', 'illus',
+];
+
 function looksLikeName(line: string): boolean {
   const n = normalize(line);
   if (n.length < 3 || n.length > 25) return false;
   if (NAME_STOPWORDS.has(n)) return false;
-  for (const stop of NAME_STOPWORDS) {
-    if (n.startsWith(stop + ' ') || n.startsWith('evolves')) return false;
-  }
+  if (n.startsWith('evolves') || CHROME_PREFIXES.some((p) => n.startsWith(p + ' '))) return false;
   // Mostly letters (allow things like "Mewtwo ex", "Pikachu V").
   const letters = n.replace(/[^a-z]/g, '').length;
   if (letters / n.length < 0.6) return false;
@@ -367,7 +378,7 @@ export function splitStrongMatches(ranked: ScoredCandidate[]): {
 }
 
 /** How many top candidates get their full record fetched for attack names. */
-const DETAIL_FETCH_LIMIT = 8;
+const DETAIL_FETCH_LIMIT = 12;
 /** How many candidates the Confirm screen receives. */
 const MAX_CANDIDATES = 25;
 
@@ -414,6 +425,18 @@ export async function matchCard(parsed: ParsedCardText): Promise<MatchOutcome> {
       briefs = found;
       parsed = { ...parsed, name: attempt };
       break;
+    }
+  }
+
+  // Digital-only TCG Pocket cards share names with real cards but are never
+  // in a binder; drop them so they cannot win a tie for "newest set".
+  if (briefs.length > 1) {
+    try {
+      const digital = await getDigitalSetIds();
+      const physical = briefs.filter((b) => !digital.has(setIdOf(b)));
+      if (physical.length > 0) briefs = physical;
+    } catch {
+      // Keep everything if the series list cannot be loaded.
     }
   }
 

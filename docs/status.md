@@ -723,3 +723,16 @@ collector number was not read and a name-only match picked an arbitrary printing
   (1932 px wide, number ~10 px tall); not yet shown to help. Real phone photos have about 1.5×
   more pixels.
 - Tests: binder fixtures 75/75; earlier pages still 25/27.
+
+### Second phone test (2026-11-08): why Energy Retrieval was "Not found"
+Not the database: the OCR read "Energy Retrieval" correctly, but the name filter dropped every
+line starting with a label word, including real names ("Energy Retrieval", "Pokémon Center
+Lady", "Trainer's Mail"). Now only whole-line "Energy", "Pokémon", "Item", "Trainer", "Tool"
+count as chrome; prefixes like "Stage 2 …", "Weakness …" still do. Also: digital-only TCG Pocket
+cards (A1, B1a, …) are removed from candidates (Hariyama had landed on `B1a-040`), and the
+attack-name comparison now looks at the top 12 candidates (was 8). Offline check of the
+recorded text: Energy Retrieval → `me04-108`, Hariyama without HP → `me01-073`. Binder
+fixtures 78/78. Open: Alakazam was "Not found" on the phone but found (`mep-003`) when the
+same page was read on the PC; the phone's OCR text for that pocket is needed (tap the tile,
+orange text in the sheet). Greedent showed `#065` instead of `sv10-159` on the phone (number
+not read there).

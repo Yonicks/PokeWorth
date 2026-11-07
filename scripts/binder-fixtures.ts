@@ -116,6 +116,16 @@ check('a 3×3 pocket from a 12 MP photo is big enough to read (≥ 900 px wide)'
 check('labels read row then pocket', pocketLabel(p9[5]) === 'Row 2, pocket 3');
 check('layout table matches pocket counts', LAYOUTS['3x3'].cols * LAYOUTS['3x3'].rows === 9 && LAYOUTS['2x2'].label === '4 pockets');
 
+// ── Names that start with a label word ──────────────────────────────────────
+
+check('"Energy Retrieval" is a name, not a label (it was dropped before)',
+  nameCandidates(['Item', 'Energy Retrieval', 'Put up to 2 Basic Energy cards from your discard pile'])[0] === 'Energy Retrieval',
+  JSON.stringify(nameCandidates(['Item', 'Energy Retrieval'])));
+check('names starting with Pokémon, Trainer or Tool stay',
+  nameCandidates(['Pokémon Center Lady'])[0] === 'Pokémon Center Lady' && nameCandidates(["Trainer's Mail"])[0] === "Trainer's Mail");
+check('real labels are still skipped', nameCandidates(['Stage 2 Evolves from Kadabra', 'Weakness x2', 'Item', 'Energy', 'Pokémon']).length === 0,
+  JSON.stringify(nameCandidates(['Stage 2 Evolves from Kadabra', 'Weakness x2', 'Item', 'Energy', 'Pokémon'])));
+
 // ── Printing accuracy: HP, strip number, unsure printings ───────────────────
 
 check('HP is read from the usual OCR shapes',

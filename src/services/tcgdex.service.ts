@@ -35,6 +35,22 @@ export async function searchCardsByName(name: string): Promise<CardBrief[]> {
   return get<CardBrief[]>(`/cards?name=like:${query}`);
 }
 
+/**
+ * A card by set and collector number, e.g. ("sv10", "050"). Leading zeros
+ * are dropped: TCGdex finds "sv03.5/50" but not "base1/004". Null when the
+ * set has no such number.
+ */
+export async function getCardInSet(setId: string, localId: string): Promise<CardBrief | null> {
+  const number = localId.replace(/^0+(?=\d)/, '');
+  const res = await fetch(`${BASE_URL}/sets/${encodeURIComponent(setId)}/${encodeURIComponent(number)}`, {
+    headers: { Accept: 'application/json' },
+  });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`TCGdex request failed (${res.status}) for set ${setId} #${number}`);
+  const c = (await res.json()) as CardBrief;
+  return { id: c.id, localId: c.localId, name: c.name, image: c.image };
+}
+
 /** Fetch the full card record, including set, variants, and pricing. */
 export async function getCard(id: string): Promise<Card> {
   return get<Card>(`/cards/${encodeURIComponent(id)}`);

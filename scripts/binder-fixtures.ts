@@ -13,6 +13,15 @@ import {
   POCKET_ASPECT,
   type Rect,
 } from '../src/services/binder-grid.model';
+import {
+  classifyPocket,
+  pocketErrorText,
+  runQueue,
+  startsTicked,
+  summarize,
+  textChars,
+} from '../src/services/binder-scan.model';
+import { nameVariants, searchOrder, type MatchOutcome } from '../src/services/card-matcher.service';
 
 let failed = 0;
 let total = 0;
@@ -77,5 +86,77 @@ check('a 3×3 pocket from a 12 MP photo is big enough to read (≥ 900 px wide)'
 check('labels read row then pocket', pocketLabel(p9[5]) === 'Row 2, pocket 3');
 check('layout table matches pocket counts', LAYOUTS['3x3'].cols * LAYOUTS['3x3'].rows === 9 && LAYOUTS['2x2'].label === '4 pockets');
 
-console.log(`\n${total - failed}/${total} binder fixtures passed.`);
-if (failed > 0) process.exit(1);
+// ── Step 2: statuses, queue, error text, name variants ──────────────────────
+
+const outcome = (confident: boolean, n = 1) =>
+  ({
+    parsed: { rawLines: [] },
+    candidates: Array.from({ length: n }, (_, i) => ({ card: { id: `c${i}`, localId: '1', name: 'X' }, score: 0.9, reasons: [] })),
+    confidentCardId: confident ? 'c0' : undefined,
+  }) as unknown as MatchOutcome;
+
+check('almost no text means an empty pocket', classifyPocket(['°', '1'], null) === 'empty' && textChars(['a b', '-c']) === 3);
+check('text but no match means not found', classifyPocket(['Some text here'], outcome(false, 0)) === 'notfound');
+check('a confident match is Sure and starts ticked', classifyPocket(['Pikachu', '58/102'], outcome(true)) === 'sure' && startsTicked('sure'));
+check('an unsure match is Check and starts unticked (decision 3)',
+  classifyPocket(['Pikachu'], outcome(false)) === 'check' && !startsTicked('check'));
+const sum = summarize(['sure', 'sure', 'check', 'notfound', 'empty', 'error']);
+check('page summary counts every status', sum.sure === 2 && sum.found === 3 && sum.empty === 1 && sum.error === 1);
+check('rate limit errors read as a limit', /limit/i.test(pocketErrorText(new Error('Cloud OCR HTTP 429'))));
+check('network errors read as no connection', pocketErrorText(new TypeError('Network request failed')) === 'No connection.');
+
+async function queueChecks() {
+  let running = 0;
+  let peak = 0;
+  const order: number[] = [];
+  const res = await runQueue(
+    [30, 5, 20, 1, 10, 2, 8, 3, 4],
+    async (ms, i) => {
+      running++;
+      peak = Math.max(peak, running);
+      await new Promise((r) => setTimeout(r, ms));
+      running--;
+      return i * 10;
+    },
+    { concurrency: 3, onResult: (_r, i) => order.push(i) },
+  );
+  check('queue never runs more than 3 at once', peak === 3, String(peak));
+  check('queue returns results in pocket order', res.join(',') === '0,10,20,30,40,50,60,70,80', res.join(','));
+  check('queue reports each pocket as it finishes', order.length === 9 && order[0] !== 0, order.join(','));
+
+  const ac = new AbortController();
+  let started = 0;
+  const partial = await runQueue(
+    [1, 2, 3, 4, 5, 6, 7, 8, 9],
+    async (x) => {
+      started++;
+      if (started === 2) ac.abort();
+      await new Promise((r) => setTimeout(r, 5));
+      return x;
+    },
+    { concurrency: 1, signal: ac.signal },
+  );
+  check('cancel stops new pockets and adds nothing for them',
+    started === 2 && partial.filter((x) => x !== undefined).length === 2, `${started} ${JSON.stringify(partial)}`);
+}
+
+check('ex variants: "ev", "e" and glued "ex" become " ex"',
+  nameVariants('Mega Mawile ev').includes('Mega Mawile ex') &&
+    nameVariants('Gouging Fire e').includes('Gouging Fire ex') &&
+    nameVariants('Pikachuex').includes('Pikachu ex'),
+  JSON.stringify([nameVariants('Mega Mawile ev'), nameVariants('Pikachuex')]));
+check('noise in front of the name is dropped', nameVariants('STAGEZ Blaziken').includes('Blaziken') && nameVariants('N. Reshiram').includes('Reshiram'));
+check('trainer prefix misread: last word is tried', nameVariants('My Gyarados').includes('Gyarados'));
+check('cut-off name: short prefix is tried', nameVariants('Butteri').includes('Butte'));
+check('the original spelling is always tried first', nameVariants("Misty's Lapras")[0] === "Misty's Lapras");
+check('search order: first guess variants, then other lines, capped at 8',
+  (() => {
+    const o = searchOrder('My Gyarados', ['My Gyarados', 'Splashing Panic', 'Waterfall']);
+    return o[0] === 'My Gyarados' && o.includes('Gyarados') && o.indexOf('Gyarados') < o.indexOf('Splashing Panic') && o.length <= 8;
+  })(),
+  JSON.stringify(searchOrder('My Gyarados', ['My Gyarados', 'Splashing Panic', 'Waterfall'])));
+
+queueChecks().then(() => {
+  console.log(`\n${total - failed}/${total} binder fixtures passed.`);
+  if (failed > 0) process.exit(1);
+});

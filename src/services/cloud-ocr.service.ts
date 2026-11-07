@@ -65,6 +65,8 @@ export async function recognizeInCloud(imageUri: string): Promise<string[]> {
   body.append('base64Image', dataUrl);
   body.append('OCREngine', '2');
   body.append('scale', 'true');
+  // Turns sideways cards upright before reading (binder pages often have one).
+  body.append('detectOrientation', 'true');
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);

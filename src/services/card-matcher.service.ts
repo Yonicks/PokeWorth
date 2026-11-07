@@ -6,7 +6,7 @@
 
 import type { Card, CardBrief, ParsedCardText, ScoredCandidate } from '../types/card';
 import { normalize, similarity } from '../utils/text';
-import { getCard, getSetSizes, searchCardsByName, setIdOf } from './tcgdex.service';
+import { getCard, getCardInSet, getSetSizes, searchCardsByName, setIdOf } from './tcgdex.service';
 
 /** Collector number with a set total, e.g. "4/102" or "TG12/TG30". */
 const COLLECTOR_NUMBER_RE = /\b([A-Z]{0,4}\d{1,3}[a-z]?)\s*\/\s*([A-Z]{0,4}\d{1,3})\b/;
@@ -119,8 +119,63 @@ export function nameCandidates(rawLines: string[]): string[] {
   return [...capitalised, ...plausible.filter((l) => !/^[A-Z]/.test(l))];
 }
 
-/** How many OCR name guesses to search before giving up. */
-const MAX_NAME_ATTEMPTS = 5;
+/** How many catalog searches one card may use for name guesses. */
+const MAX_NAME_ATTEMPTS = 8;
+
+/** Words OCR puts in front of a name: stage labels, trainer names, misreads. */
+function isNoiseWord(word: string): boolean {
+  return (
+    /^[A-Z0-9]{4,}$/.test(word) || // "STAGEZ", "BASIS"
+    word.length <= 3 || // "My", "N.", "NS"
+    /^(stage|basic|trainer|supporter|item|stadium)/i.test(word)
+  );
+}
+
+/**
+ * Spellings worth searching for one OCR name, most faithful first:
+ * the line itself, a cleaned "ex" suffix, without a noisy first word, the
+ * last word on its own, and a short prefix for a cut-off name.
+ */
+export function nameVariants(name: string): string[] {
+  const clean = name.replace(/\s+/g, ' ').trim();
+  const out = [clean];
+  // "Mega Mawile ev" / "Gengar eX" / "Gouging Fire e" -> "... ex"; "Pikachuex" -> "Pikachu ex".
+  const ex = clean.replace(/\s+(ev|ex|e x|e)$/i, ' ex').replace(/([a-z]{4,})ex$/, '$1 ex');
+  out.push(ex);
+  const words = ex.split(' ');
+  const exSuffix = words[words.length - 1].toLowerCase() === 'ex';
+  const core = exSuffix ? words.slice(0, -1) : words;
+  if (core.length > 1 && isNoiseWord(core[0])) {
+    out.push([...core.slice(1), ...(exSuffix ? ['ex'] : [])].join(' '));
+  }
+  if (core.length > 1) {
+    const last = core[core.length - 1];
+    if (last.length >= 4) out.push(last);
+  }
+  const first = core.find((w) => w.length >= 6 && /^[A-Za-z]/.test(w));
+  if (first) out.push(first.slice(0, 5));
+  return [...new Set(out.filter((v) => v.length >= 3))];
+}
+
+/** Search order for an OCR card: each guess's variants in turn, capped. */
+export function searchOrder(first: string, guesses: string[]): string[] {
+  const order = [first, ...guesses.filter((g) => g !== first)].flatMap(nameVariants);
+  return [...new Set(order)].slice(0, MAX_NAME_ATTEMPTS);
+}
+
+/** At most this many sets are checked for one collector number. */
+const MAX_NUMBER_SETS = 8;
+
+async function briefsByNumber(localId: string, setTotal: number): Promise<CardBrief[]> {
+  try {
+    const sizes = await getSetSizes();
+    const setIds = [...sizes].filter(([, n]) => n === setTotal).map(([id]) => id).slice(0, MAX_NUMBER_SETS);
+    const found = await Promise.all(setIds.map((id) => getCardInSet(id, localId).catch(() => null)));
+    return found.filter((b): b is CardBrief => b !== null);
+  } catch {
+    return [];
+  }
+}
 
 function normalizeLocalId(id: string): string {
   // "004" -> "4", keep letter prefixes ("TG12" -> "tg12").
@@ -259,23 +314,32 @@ export async function matchCard(parsed: ParsedCardText): Promise<MatchOutcome> {
   }
 
   let briefs: CardBrief[] = [];
-  if (parsed.name) {
-    briefs = await searchCardsByName(parsed.name);
+  // A name typed by hand is searched as it is. An OCR guess can be noisy
+  // ("My Gyarados", "Mega Mawile ev") or an attack name ("Destructo-Press"),
+  // so its variants and the next plausible lines are tried in turn, and the
+  // first search the catalog answers wins.
+  const guesses = nameCandidates(parsed.rawLines);
+  const fromOcr = !!parsed.name && guesses.includes(parsed.name);
+  const tries = parsed.name
+    ? fromOcr
+      ? searchOrder(parsed.name, guesses)
+      : [parsed.name]
+    : [];
+  for (const attempt of tries) {
+    const found = await searchCardsByName(attempt);
+    if (found.length > 0) {
+      briefs = found;
+      parsed = { ...parsed, name: attempt };
+      break;
+    }
   }
 
-  // The first guess can be an attack or ability name ("Destructo-Press").
-  // When it finds nothing and came from OCR (not typed by hand), try the
-  // next plausible lines and keep the first name the catalog knows.
-  const guesses = nameCandidates(parsed.rawLines);
-  if (briefs.length === 0 && parsed.name && guesses.includes(parsed.name)) {
-    for (const guess of guesses.filter((g) => g !== parsed.name).slice(0, MAX_NAME_ATTEMPTS - 1)) {
-      const found = await searchCardsByName(guess);
-      if (found.length > 0) {
-        briefs = found;
-        parsed = { ...parsed, name: guess };
-        break;
-      }
-    }
+  // A collector number with its set size ("050/182") points at a handful of
+  // cards whatever the name says, so look it up in every set of that size.
+  if (parsed.localId && parsed.setTotal) {
+    const byNumber = await briefsByNumber(parsed.localId, parsed.setTotal);
+    const known = new Set(briefs.map((b) => b.id));
+    briefs = [...briefs, ...byNumber.filter((b) => !known.has(b.id))];
   }
 
   // Set sizes come from one cached catalog request, so every candidate is

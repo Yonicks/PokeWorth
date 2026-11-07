@@ -6,7 +6,7 @@
 
 import type { Card, CardBrief, ParsedCardText, ScoredCandidate } from '../types/card';
 import { normalize, similarity } from '../utils/text';
-import { searchCardsByName, getCard } from './tcgdex.service';
+import { getCard, getSetSizes, searchCardsByName, setIdOf } from './tcgdex.service';
 
 /** Collector number with a set total, e.g. "4/102" or "TG12/TG30". */
 const COLLECTOR_NUMBER_RE = /\b([A-Z]{0,4}\d{1,3}[a-z]?)\s*\/\s*([A-Z]{0,4}\d{1,3})\b/;
@@ -101,58 +101,145 @@ export function parseOcrLines(rawLines: string[]): ParsedCardText {
     if (number.setTotal !== undefined) result.setTotal = number.setTotal;
   }
 
-  // Card names are printed near the top, so take the first plausible line.
-  for (const line of rawLines) {
-    if (looksLikeName(line)) {
-      result.name = line.trim();
-      break;
-    }
-  }
+  const [name] = nameCandidates(rawLines);
+  if (name) result.name = name;
 
   return result;
 }
+
+/**
+ * Plausible card-name lines in the order to try them. Names are printed
+ * near the top and always start with a capital letter, while OCR noise from
+ * artwork and energy symbols ("ned", "car i") is usually lowercase, so
+ * capitalised lines come first, each group in reading order.
+ */
+export function nameCandidates(rawLines: string[]): string[] {
+  const plausible = [...new Set(rawLines.map((l) => l.trim()).filter(looksLikeName))];
+  const capitalised = plausible.filter((l) => /^[A-Z]/.test(l));
+  return [...capitalised, ...plausible.filter((l) => !/^[A-Z]/.test(l))];
+}
+
+/** How many OCR name guesses to search before giving up. */
+const MAX_NAME_ATTEMPTS = 5;
 
 function normalizeLocalId(id: string): string {
   // "004" -> "4", keep letter prefixes ("TG12" -> "tg12").
   return normalize(id).replace(/^0+(?=\d)/, '').replace(/\s/g, '');
 }
 
+/**
+ * How much each signal is worth. A score is the weight earned divided by the
+ * weight of the signals actually available, so a card whose number could not
+ * be read can still reach 100% on name alone, and reprints that share a name
+ * and number are split by set size and attack names instead of tying.
+ */
+const WEIGHTS = { name: 0.4, number: 0.3, setSize: 0.15, attacks: 0.15 };
+
+/** Extra catalog facts that sharpen the ranking when they could be fetched. */
+export interface RankingContext {
+  /** Official card count per set id (see getSetSizes). */
+  setSizes?: Map<string, number>;
+  /** Full card records by id, for attack and ability names. */
+  details?: Map<string, Card>;
+}
+
+/** Share of a card's attack/ability names that appear among the OCR lines. */
+function attackOverlap(card: Card, rawLines: string[]): number {
+  const names = [...(card.abilities ?? []), ...(card.attacks ?? [])]
+    .map((a) => normalize(a.name))
+    .filter((n) => n.length >= 4);
+  if (names.length === 0) return 0;
+  const lines = rawLines.map(normalize);
+  const found = names.filter((n) => lines.some((l) => l.includes(n) || similarity(l, n) >= 0.8));
+  return found.length / names.length;
+}
+
 /** Score catalog candidates against what OCR read. */
-export function rankCandidates(briefs: CardBrief[], parsed: ParsedCardText): ScoredCandidate[] {
+export function rankCandidates(
+  briefs: CardBrief[],
+  parsed: ParsedCardText,
+  context: RankingContext = {},
+): ScoredCandidate[] {
+  // Set size and attacks only count when some candidate earns them, so an
+  // OCR misread or a card with no readable attacks does not drag every
+  // score down equally (which would only hide confident matches).
+  const sizeMatches = (card: CardBrief) =>
+    context.setSizes?.get(setIdOf(card)) === parsed.setTotal;
+  const overlaps = new Map<string, number>();
+  for (const card of briefs) {
+    const detail = context.details?.get(card.id);
+    if (detail) overlaps.set(card.id, attackOverlap(detail, parsed.rawLines));
+  }
+  const useSetSize = Boolean(parsed.setTotal && context.setSizes && briefs.some(sizeMatches));
+  const useAttacks = [...overlaps.values()].some((o) => o > 0);
+  const available =
+    (parsed.name ? WEIGHTS.name : 0) +
+    (parsed.localId ? WEIGHTS.number : 0) +
+    (useSetSize ? WEIGHTS.setSize : 0) +
+    (useAttacks ? WEIGHTS.attacks : 0);
+
   const scored: ScoredCandidate[] = briefs.map((card) => {
     const reasons: string[] = [];
-    let score = 0;
+    let earned = 0;
 
     if (parsed.name) {
       const nameScore = similarity(parsed.name, card.name);
-      score += nameScore * 0.6;
+      earned += nameScore * WEIGHTS.name;
       reasons.push(`name ${(nameScore * 100).toFixed(0)}%`);
     }
 
-    if (parsed.localId) {
-      if (normalizeLocalId(card.localId) === normalizeLocalId(parsed.localId)) {
-        score += 0.4;
-        reasons.push('number exact');
-      }
-    } else {
-      // No number read: rescale so name alone can still reach 1.0.
-      score = parsed.name ? score / 0.6 : 0;
+    if (parsed.localId && normalizeLocalId(card.localId) === normalizeLocalId(parsed.localId)) {
+      earned += WEIGHTS.number;
+      reasons.push('number exact');
     }
 
-    return { card, score: Math.min(score, 1), reasons };
+    if (useSetSize && sizeMatches(card)) {
+      earned += WEIGHTS.setSize;
+      reasons.push('set size match');
+    }
+
+    const overlap = overlaps.get(card.id) ?? 0;
+    if (useAttacks && overlap > 0) {
+      earned += overlap * WEIGHTS.attacks;
+      reasons.push(`attacks ${(overlap * 100).toFixed(0)}%`);
+    }
+
+    return { card, score: available > 0 ? earned / available : 0, reasons };
   });
 
   return scored.sort((a, b) => b.score - a.score);
 }
+
+/** Below this gap, two candidates count as equally likely. */
+const MARGIN = 0.15 - 1e-9;
 
 /** A match is "confident" only when it clearly beats the runner-up. */
 export function isConfidentMatch(ranked: ScoredCandidate[]): boolean {
   if (ranked.length === 0) return false;
   const [best, second] = ranked;
   if (best.score < 0.85) return false;
-  if (second && best.score - second.score < 0.15) return false;
+  if (second && best.score - second.score < MARGIN) return false;
   return true;
 }
+
+/**
+ * Candidates worth showing first: everything within the confidence margin
+ * of the best one. The rest are other printings the user can expand.
+ */
+export function splitStrongMatches(ranked: ScoredCandidate[]): {
+  strong: ScoredCandidate[];
+  others: ScoredCandidate[];
+} {
+  if (ranked.length === 0) return { strong: [], others: [] };
+  const cutoff = ranked[0].score - MARGIN;
+  const strong = ranked.filter((c) => c.score >= cutoff);
+  return { strong, others: ranked.slice(strong.length) };
+}
+
+/** How many top candidates get their full record fetched for attack names. */
+const DETAIL_FETCH_LIMIT = 8;
+/** How many candidates the Confirm screen receives. */
+const MAX_CANDIDATES = 25;
 
 export interface MatchOutcome {
   parsed: ParsedCardText;
@@ -176,30 +263,51 @@ export async function matchCard(parsed: ParsedCardText): Promise<MatchOutcome> {
     briefs = await searchCardsByName(parsed.name);
   }
 
-  let ranked = rankCandidates(briefs, parsed).slice(0, 10);
+  // The first guess can be an attack or ability name ("Destructo-Press").
+  // When it finds nothing and came from OCR (not typed by hand), try the
+  // next plausible lines and keep the first name the catalog knows.
+  const guesses = nameCandidates(parsed.rawLines);
+  if (briefs.length === 0 && parsed.name && guesses.includes(parsed.name)) {
+    for (const guess of guesses.filter((g) => g !== parsed.name).slice(0, MAX_NAME_ATTEMPTS - 1)) {
+      const found = await searchCardsByName(guess);
+      if (found.length > 0) {
+        briefs = found;
+        parsed = { ...parsed, name: guess };
+        break;
+      }
+    }
+  }
 
-  // Disambiguate same name + number across sets using the printed set size.
-  if (parsed.setTotal && ranked.length > 1) {
-    const withSets = await Promise.all(
-      ranked.map(async (candidate) => {
+  // Set sizes come from one cached catalog request, so every candidate is
+  // checked, not just the first few. Without them the ranking still works.
+  const context: RankingContext = {};
+  if (parsed.setTotal && briefs.length > 1) {
+    try {
+      context.setSizes = await getSetSizes();
+    } catch {
+      // Ranking falls back to name + number.
+    }
+  }
+  let ranked = rankCandidates(briefs, parsed, context);
+
+  // Attack and ability names split reprints that share a name, number and
+  // set size. Only the leading candidates are fetched to keep it quick.
+  if (ranked.length > 1 && parsed.rawLines.length > 0) {
+    const details = new Map<string, Card>();
+    await Promise.all(
+      ranked.slice(0, DETAIL_FETCH_LIMIT).map(async ({ card }) => {
         try {
-          const full: Card = await getCard(candidate.card.id);
-          const official = full.set?.cardCount?.official;
-          if (official === parsed.setTotal) {
-            return {
-              ...candidate,
-              score: Math.min(candidate.score + 0.2, 1),
-              reasons: [...candidate.reasons, 'set size match'],
-            };
-          }
+          details.set(card.id, await getCard(card.id));
         } catch {
-          // Network hiccup on one candidate should not sink the ranking.
+          // A network hiccup on one candidate should not sink the ranking.
         }
-        return candidate;
       }),
     );
-    ranked = withSets.sort((a, b) => b.score - a.score);
+    if (details.size > 0) {
+      ranked = rankCandidates(briefs, parsed, { ...context, details });
+    }
   }
+  ranked = ranked.slice(0, MAX_CANDIDATES);
 
   const confident = isConfidentMatch(ranked);
   return {

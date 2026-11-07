@@ -53,7 +53,8 @@ export function splitParsedText(response: OcrSpaceResponse): string[] {
   return (response.ParsedResults ?? [])
     .flatMap((r) => (r.ParsedText ?? '').split(/\r?\n/))
     .map((l) => l.trim())
-    .filter((l) => l.length > 0);
+    // The public demo key prepends "[Note: the 'helloworld' demo key ...]".
+    .filter((l) => l.length > 0 && !/^\[note:/i.test(l));
 }
 
 /** Runs cloud OCR on a photo and returns its text lines. Throws on failure. */

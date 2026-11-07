@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -12,6 +12,7 @@ import {
 
 import { OcrDebugPanel } from '@/components/ocr-debug-panel';
 import { useCardMatch } from '@/hooks/use-cards';
+import { splitStrongMatches } from '@/services/card-matcher.service';
 import { cardImageUrl } from '@/services/tcgdex.service';
 import type { ParsedCardText, ScoredCandidate } from '@/types/card';
 
@@ -64,6 +65,7 @@ export default function ConfirmScreen() {
   }, [params.name, params.number, params.total, rawLines]);
 
   const match = useCardMatch(parsed);
+  const [showAll, setShowAll] = useState(false);
 
   // Skip confirmation when there is exactly one trustworthy match.
   useEffect(() => {
@@ -104,7 +106,8 @@ export default function ConfirmScreen() {
     );
   }
 
-  const candidates = match.data?.candidates ?? [];
+  const { strong, others } = splitStrongMatches(match.data?.candidates ?? []);
+  const candidates = showAll ? [...strong, ...others] : strong;
 
   const renderCandidate = ({ item }: { item: ScoredCandidate }) => (
     <Pressable
@@ -139,7 +142,7 @@ export default function ConfirmScreen() {
         ListHeaderComponent={
           <>
             <Text style={styles.header}>
-              Looked for: {parsed.name ?? 'unknown name'}
+              Looked for: {match.data?.parsed.name ?? parsed.name ?? 'unknown name'}
               {parsed.localId
                 ? ` · №${parsed.localId}${parsed.setTotal ? `/${parsed.setTotal}` : ''}`
                 : ''}
@@ -153,6 +156,20 @@ export default function ConfirmScreen() {
               />
             ) : null}
           </>
+        }
+        ListFooterComponent={
+          others.length > 0 ? (
+            <Pressable
+              style={styles.moreButton}
+              onPress={() => setShowAll((v) => !v)}
+              accessibilityRole="button">
+              <Text style={styles.moreText}>
+                {showAll
+                  ? 'Show best matches only'
+                  : `Show ${others.length} other printing${others.length === 1 ? '' : 's'}`}
+              </Text>
+            </Pressable>
+          ) : undefined
         }
         ListEmptyComponent={
           <View style={styles.empty}>
@@ -200,4 +217,6 @@ const styles = StyleSheet.create({
   candidateName: { fontSize: 17, fontWeight: '600' },
   candidateMeta: { fontSize: 13, color: '#8e8e93', marginTop: 2 },
   candidateScore: { fontSize: 13, color: '#208AEF', marginTop: 4 },
+  moreButton: { paddingVertical: 16, alignItems: 'center' },
+  moreText: { fontSize: 15, color: '#208AEF', fontWeight: '600' },
 });

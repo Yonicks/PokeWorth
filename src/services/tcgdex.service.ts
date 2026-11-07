@@ -12,6 +12,7 @@ import type {
   DisplayPrice,
   PriceDetail,
   ProviderPricing,
+  SetBrief,
 } from '../types/card';
 
 const BASE_URL = 'https://api.tcgdex.net/v2/en';
@@ -36,6 +37,29 @@ export async function searchCardsByName(name: string): Promise<CardBrief[]> {
 /** Fetch the full card record, including set, variants, and pricing. */
 export async function getCard(id: string): Promise<Card> {
   return get<Card>(`/cards/${encodeURIComponent(id)}`);
+}
+
+let setSizesRequest: Promise<Map<string, number>> | null = null;
+
+/**
+ * Official (printed) card count per set id, e.g. "base1" -> 102. One request
+ * for the whole catalog, cached for the session; a failed request is retried
+ * next time instead of being cached.
+ */
+export function getSetSizes(): Promise<Map<string, number>> {
+  setSizesRequest ??= get<SetBrief[]>('/sets')
+    .then((sets) => new Map(sets.map((s) => [s.id, s.cardCount.official])))
+    .catch((error: unknown) => {
+      setSizesRequest = null;
+      throw error;
+    });
+  return setSizesRequest;
+}
+
+/** Set id from a card id: "base1-4" -> "base1", "sv06.5-042" -> "sv06.5". */
+export function setIdOf(card: CardBrief): string {
+  const suffix = `-${card.localId}`;
+  return card.id.endsWith(suffix) ? card.id.slice(0, -suffix.length) : card.id;
 }
 
 /**

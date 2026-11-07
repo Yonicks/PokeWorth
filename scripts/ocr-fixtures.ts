@@ -2,8 +2,15 @@
  * Offline fixtures for OCR text parsing and candidate ranking (no network).
  * Run: npx tsx scripts/ocr-fixtures.ts
  */
-import { parseOcrLines, rankCandidates } from '../src/services/card-matcher.service';
-import type { CardBrief, ParsedCardText } from '../src/types/card';
+import {
+  isConfidentMatch,
+  nameCandidates,
+  parseOcrLines,
+  rankCandidates,
+  splitStrongMatches,
+  type RankingContext,
+} from '../src/services/card-matcher.service';
+import type { Card, CardBrief, ParsedCardText } from '../src/types/card';
 
 interface Expected {
   name?: string | null;
@@ -71,6 +78,19 @@ const FIXTURES: Fixture[] = [
     label: 'damage numbers are not collector numbers',
     lines: ['Charizard', 'HP 120', 'Fire Spin', '120', '100', '30'],
     expect: { name: 'Charizard', localId: null, setTotal: null },
+  },
+  {
+    label: 'lowercase artwork noise skipped for capitalised name (Delphox photo)',
+    lines: [
+      '0+', 'ed', 'ned', ') 0+', 'gY', 'car i', 'up', 'ch', 'Delphox', '-1600',
+      'Ability Faring Magic', 'Energized Storm', '30×', '• CRIm 015/086 +',
+    ],
+    expect: { name: 'Delphox', localId: '015', setTotal: 86 },
+  },
+  {
+    label: 'all-lowercase OCR still yields a name',
+    lines: ['basic', 'pikachu', 'hp 60', '58/102'],
+    expect: { name: 'pikachu', localId: '58', setTotal: 102 },
   },
   {
     label: 'slash number wins over a promo-like token',
@@ -153,6 +173,109 @@ for (const fixture of RANK_FIXTURES) {
   }
 }
 
-const total = FIXTURES.length + RANK_FIXTURES.length;
+// Ranking with catalog context: set sizes and attack names split reprints.
+const reprints: CardBrief[] = [
+  { id: 'base1-4', localId: '4', name: 'Charizard' },
+  { id: 'base4-4', localId: '4', name: 'Charizard' },
+  { id: 'ex14-4', localId: '4', name: 'Charizard' },
+];
+const setSizes = new Map([['base1', 102], ['base4', 130], ['ex14', 100]]);
+const details = new Map<string, Card>([
+  ['base1-4', { ...reprints[0], abilities: [{ name: 'Energy Burn' }], attacks: [{ name: 'Fire Spin' }] }],
+  ['base4-4', { ...reprints[1], abilities: [{ name: 'Energy Burn' }], attacks: [{ name: 'Fire Spin' }] }],
+  ['ex14-4', { ...reprints[2], attacks: [{ name: 'Burning Shield' }, { name: 'Flame Blast' }] }],
+]);
+
+const CONTEXT_FIXTURES: {
+  label: string;
+  lines: string[];
+  context: RankingContext;
+  expectTop: string;
+  expectConfident: boolean;
+  expectStrong: number;
+}[] = [
+  {
+    label: 'context: without set sizes, three 4/102 Charizards tie',
+    lines: ['Charizard', '4/102'],
+    context: {},
+    expectTop: 'base4-4',
+    expectConfident: false,
+    expectStrong: 3,
+  },
+  {
+    label: 'context: set size 102 picks Base Set over reprints',
+    lines: ['Charizard', '4/102'],
+    context: { setSizes },
+    expectTop: 'base1-4',
+    expectConfident: true,
+    expectStrong: 1,
+  },
+  {
+    label: 'context: attack names split reprints when no number is read',
+    lines: ['Charizard', 'Burning Shield', 'Flame Blast'],
+    context: { details },
+    expectTop: 'ex14-4',
+    expectConfident: true,
+    expectStrong: 1,
+  },
+  {
+    label: 'context: misread set size does not hide a confident number match',
+    lines: ['Pikachu', '58/999'],
+    context: { setSizes },
+    expectTop: 'base1-58',
+    expectConfident: true,
+    expectStrong: 1,
+  },
+];
+const pikachus: CardBrief[] = [
+  { id: 'base1-58', localId: '58', name: 'Pikachu' },
+  { id: 'base2-60', localId: '60', name: 'Pikachu' },
+];
+
+for (const fixture of CONTEXT_FIXTURES) {
+  const briefs = fixture.lines[0] === 'Pikachu' ? pikachus : reprints;
+  const ranked = rankCandidates(briefs, parseOcrLines(fixture.lines), fixture.context);
+  const strong = splitStrongMatches(ranked).strong.length;
+  const confident = isConfidentMatch(ranked);
+  const top = ranked[0]?.card.id;
+  // With an exact tie the order is the catalog order, so only check top when it must win.
+  const topOk = fixture.expectStrong > 1 || top === fixture.expectTop;
+  if (topOk && confident === fixture.expectConfident && strong === fixture.expectStrong) {
+    console.log(`PASS  ${fixture.label}`);
+  } else {
+    failed++;
+    console.log(
+      `FAIL  ${fixture.label}: top=${top} confident=${confident} strong=${strong} ` +
+        `scores=${ranked.map((r) => `${r.card.id}:${r.score.toFixed(2)}`).join(' ')}`,
+    );
+  }
+}
+
+// Fallback order used by matchCard when the first name guess finds nothing.
+const CANDIDATE_FIXTURES: { label: string; lines: string[]; expect: string[] }[] = [
+  {
+    label: 'candidates: capitalised first, attack name can be retried past',
+    lines: ['ned', 'Destructo-Press', 'Copperajah', 'HP 190', '062/167', 'car i'],
+    expect: ['Destructo-Press', 'Copperajah', 'ned', 'car i'],
+  },
+  {
+    label: 'candidates: duplicates removed',
+    lines: ['Pikachu', 'Pikachu', 'Thunder Shock'],
+    expect: ['Pikachu', 'Thunder Shock'],
+  },
+];
+
+for (const fixture of CANDIDATE_FIXTURES) {
+  const actual = nameCandidates(fixture.lines);
+  if (JSON.stringify(actual) === JSON.stringify(fixture.expect)) {
+    console.log(`PASS  ${fixture.label}`);
+  } else {
+    failed++;
+    console.log(`FAIL  ${fixture.label}: got ${JSON.stringify(actual)}`);
+  }
+}
+
+const total =
+  FIXTURES.length + RANK_FIXTURES.length + CONTEXT_FIXTURES.length + CANDIDATE_FIXTURES.length;
 console.log(`\n${total - failed}/${total} OCR fixtures passed.`);
 if (failed > 0) process.exit(1);

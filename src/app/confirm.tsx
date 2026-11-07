@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 
+import { OcrDebugPanel } from '@/components/ocr-debug-panel';
 import { useCardMatch } from '@/hooks/use-cards';
 import { cardImageUrl } from '@/services/tcgdex.service';
 import type { ParsedCardText, ScoredCandidate } from '@/types/card';
@@ -21,20 +22,38 @@ export default function ConfirmScreen() {
     number?: string;
     total?: string;
     lines?: string;
+    /** Capture-store id of the photo; only for manual entry / debug, never shown as card artwork. */
+    photoId?: string;
   }>();
+
+  const enterManually = () =>
+    router.push({
+      pathname: '/manual-entry',
+      params: {
+        name: typeof params.name === 'string' ? params.name : '',
+        number: typeof params.number === 'string' ? params.number : '',
+        total: typeof params.total === 'string' ? params.total : '',
+        lines: typeof params.lines === 'string' ? params.lines : '',
+        photoId: typeof params.photoId === 'string' ? params.photoId : '',
+      },
+    });
+
+  const rawLines: string[] = useMemo(() => {
+    try {
+      if (typeof params.lines === 'string' && params.lines) {
+        const value: unknown = JSON.parse(params.lines);
+        if (Array.isArray(value)) return value.map(String);
+      }
+    } catch {
+      // Raw lines are debug-only; ignore malformed input.
+    }
+    return [];
+  }, [params.lines]);
 
   const parsed: ParsedCardText | null = useMemo(() => {
     const name = typeof params.name === 'string' ? params.name.trim() : '';
     const localId = typeof params.number === 'string' ? params.number.trim() : '';
     const total = typeof params.total === 'string' ? parseInt(params.total, 10) : NaN;
-    let rawLines: string[] = [];
-    try {
-      if (typeof params.lines === 'string' && params.lines) {
-        rawLines = JSON.parse(params.lines);
-      }
-    } catch {
-      // Raw lines are debug-only; ignore malformed input.
-    }
     if (!name && !localId) return null;
     return {
       name: name || undefined,
@@ -42,7 +61,7 @@ export default function ConfirmScreen() {
       setTotal: Number.isNaN(total) ? undefined : total,
       rawLines,
     };
-  }, [params.name, params.number, params.total, params.lines]);
+  }, [params.name, params.number, params.total, rawLines]);
 
   const match = useCardMatch(parsed);
 
@@ -56,7 +75,11 @@ export default function ConfirmScreen() {
   if (!parsed) {
     return (
       <View style={styles.center}>
+        {__DEV__ ? <OcrDebugPanel rawLines={rawLines} /> : null}
         <Text style={styles.infoText}>Nothing to search for. Go back and try again.</Text>
+        <Pressable style={styles.retryButton} onPress={enterManually}>
+          <Text style={styles.retryText}>Enter details manually</Text>
+        </Pressable>
       </View>
     );
   }
@@ -105,20 +128,45 @@ export default function ConfirmScreen() {
   );
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.header}>
-        Looked for: {parsed.name ?? 'unknown name'}
-        {parsed.localId ? ` · №${parsed.localId}${parsed.setTotal ? `/${parsed.setTotal}` : ''}` : ''}
-      </Text>
+    <View style={styles.flex}>
       <FlatList
+        // The iOS header floats over content; "automatic" insets the list below it.
+        contentInsetAdjustmentBehavior="automatic"
+        contentContainerStyle={styles.container}
         data={candidates}
         keyExtractor={(item) => item.card.id}
         renderItem={renderCandidate}
+        ListHeaderComponent={
+          <>
+            <Text style={styles.header}>
+              Looked for: {parsed.name ?? 'unknown name'}
+              {parsed.localId
+                ? ` · №${parsed.localId}${parsed.setTotal ? `/${parsed.setTotal}` : ''}`
+                : ''}
+            </Text>
+            {__DEV__ ? (
+              <OcrDebugPanel
+                rawLines={parsed.rawLines}
+                name={parsed.name}
+                localId={parsed.localId}
+                setTotal={parsed.setTotal}
+              />
+            ) : null}
+          </>
+        }
         ListEmptyComponent={
-          <Text style={styles.infoText}>
-            No matching cards found. Try scanning again or refining the search from the home
-            screen.
-          </Text>
+          <View style={styles.empty}>
+            <Text style={styles.infoText}>
+              No matching cards found. Try scanning again or refining the search from the home
+              screen.
+            </Text>
+            <Pressable
+              style={styles.retryButton}
+              onPress={enterManually}
+              accessibilityRole="button">
+              <Text style={styles.retryText}>Enter details manually</Text>
+            </Pressable>
+          </View>
         }
       />
     </View>
@@ -126,8 +174,10 @@ export default function ConfirmScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16 },
+  flex: { flex: 1 },
+  container: { padding: 16 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24, gap: 12 },
+  empty: { alignItems: 'center', gap: 16 },
   header: { fontSize: 15, color: '#8e8e93', marginBottom: 12 },
   infoText: { fontSize: 15, color: '#8e8e93', textAlign: 'center', marginTop: 16 },
   retryButton: {

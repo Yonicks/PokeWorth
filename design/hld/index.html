@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PokeWorth High-Level Design</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@800;900&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* HLD document: navy ink + PokeWorth gold. Single reading column (~70ch) with a wide band for the architecture diagram. */
+:root {
+  --bg: #F6F7FB;
+  --surface: #FFFFFF;
+  --ink: #0B1A33;
+  --ink-2: #44506A;
+  --line: #DCE1EC;
+  --accent: #B98500;
+  --accent-bg: #FFF4D1;
+  --navy: #12305E;
+  --good: #1F7A4A; --good-bg: #E3F4EA;
+  --warn: #8A5A00; --warn-bg: #FFF1D6;
+  --todo: #4B5A75; --todo-bg: #EBEEF4;
+  --code-bg: #EEF1F7;
+  --font-display: "Nunito", ui-rounded, system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #061226; --surface: #0B1B33; --ink: #F1F4FA; --ink-2: #A9B6CC; --line: #1E3150;
+    --accent: #FEDF4E; --accent-bg: rgba(254,223,78,.10); --navy: #8FB3F0;
+    --good: #6EE7A0; --good-bg: rgba(110,231,160,.10); --warn: #FBCB5A; --warn-bg: rgba(251,203,90,.10);
+    --todo: #A9B6CC; --todo-bg: rgba(169,182,204,.10); --code-bg: #0E2240;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #061226; --surface: #0B1B33; --ink: #F1F4FA; --ink-2: #A9B6CC; --line: #1E3150;
+  --accent: #FEDF4E; --accent-bg: rgba(254,223,78,.10); --navy: #8FB3F0;
+  --good: #6EE7A0; --good-bg: rgba(110,231,160,.10); --warn: #FBCB5A; --warn-bg: rgba(251,203,90,.10);
+  --todo: #A9B6CC; --todo-bg: rgba(169,182,204,.10); --code-bg: #0E2240;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 16px; line-height: 1.6; }
+a { color: var(--navy); text-underline-offset: 3px; }
+a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+.wrap { max-width: 760px; margin: 0 auto; padding: 40px 20px 80px; }
+.wide { max-width: 980px; margin: 0 auto; padding: 0 20px; }
+header.doc { display: flex; flex-direction: column; gap: 14px; padding-bottom: 28px; border-bottom: 1px solid var(--line); }
+.brand { display: flex; align-items: center; gap: 10px; font-family: var(--font-display); font-weight: 900; font-size: 22px; letter-spacing: -.3px; }
+.brand .w { color: var(--accent); }
+h1 { font-family: var(--font-display); font-weight: 900; font-size: clamp(30px, 6vw, 42px); line-height: 1.1; margin: 0; letter-spacing: -.5px; text-wrap: balance; }
+.lede { font-size: 18px; color: var(--ink-2); margin: 0; max-width: 62ch; }
+.meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-top: 6px; }
+.meta div { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font-size: 14px; }
+.meta b { display: block; font-size: 11.5px; letter-spacing: .5px; text-transform: uppercase; color: var(--ink-2); font-weight: 600; }
+nav.toc { margin: 26px 0 8px; font-size: 14px; }
+nav.toc ol { margin: 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 6px 14px; }
+nav.toc a { text-decoration: none; color: var(--ink-2); }
+nav.toc a:hover { color: var(--ink); text-decoration: underline; }
+section { padding-top: 40px; }
+h2 { font-family: var(--font-display); font-weight: 800; font-size: 26px; line-height: 1.2; margin: 0 0 14px; display: flex; align-items: baseline; gap: 10px; text-wrap: balance; }
+h2 .n { font-family: var(--font-mono); font-size: 14px; font-weight: 500; color: var(--accent); }
+h3 { font-size: 17px; margin: 22px 0 8px; }
+p { margin: 0 0 12px; }
+code { font-family: var(--font-mono); font-size: .88em; background: var(--code-bg); padding: 1px 5px; border-radius: 4px; }
+.note { border-left: 3px solid var(--accent); background: var(--accent-bg); padding: 12px 14px; border-radius: 0 10px 10px 0; font-size: 15px; margin: 14px 0; }
+.rule { font-weight: 600; }
+table { width: 100%; border-collapse: collapse; font-size: 15px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-size: 12px; text-transform: uppercase; letter-spacing: .5px; color: var(--ink-2); font-weight: 600; background: var(--code-bg); }
+tr:last-child td { border-bottom: 0; }
+.table-scroll { overflow-x: auto; }
+.pill { display: inline-block; padding: 1px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.p0 { background: var(--accent-bg); color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.p1 { background: var(--todo-bg); color: var(--todo); box-shadow: inset 0 0 0 1px var(--line); }
+.s-built { background: var(--good-bg); color: var(--good); }
+.s-part { background: var(--warn-bg); color: var(--warn); }
+.s-todo { background: var(--todo-bg); color: var(--todo); }
+ol.journey { counter-reset: j; list-style: none; padding: 0; margin: 14px 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+ol.journey li { counter-increment: j; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px 12px 46px; position: relative; font-size: 15px; line-height: 1.45; }
+ol.journey li::before { content: counter(j); position: absolute; left: 12px; top: 11px; width: 24px; height: 24px; border-radius: 50%; background: var(--navy); color: var(--surface); font-size: 13px; font-weight: 600; display: grid; place-items: center; }
+.diagram { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; overflow-x: auto; margin-top: 8px; }
+.diagram svg { display: block; width: 100%; min-width: 640px; height: auto; }
+.diagram .box { fill: var(--surface); stroke: var(--ink-2); stroke-width: 1.2; }
+.diagram .box.key { fill: var(--accent-bg); stroke: var(--accent); stroke-width: 1.6; }
+.diagram .box.ext { fill: var(--code-bg); stroke: var(--navy); stroke-dasharray: 0; }
+.diagram .bound { fill: none; stroke: var(--line); stroke-width: 1.5; stroke-dasharray: 6 5; }
+.diagram text { fill: var(--ink); font-family: var(--font-body); font-size: 13px; }
+.diagram .t { font-weight: 600; font-size: 13.5px; }
+.diagram .s { fill: var(--ink-2); font-size: 11.5px; }
+.diagram .lbl { fill: var(--ink-2); font-size: 11px; font-family: var(--font-mono); }
+.diagram .edge { stroke: var(--ink-2); stroke-width: 1.4; fill: none; marker-end: url(#arr); }
+.diagram .edge.data { stroke: var(--navy); stroke-dasharray: 4 3; }
+.diagram marker path { fill: var(--ink-2); }
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; font-size: 15px; line-height: 1.5; }
+.card > b { display: block; margin-bottom: 2px; }
+.score { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; font-size: 15px; }
+.score .bar { grid-column: 1 / -1; height: 8px; border-radius: 4px; background: var(--code-bg); overflow: hidden; margin-bottom: 6px; }
+.score .bar i { display: block; height: 100%; background: var(--accent); }
+.score .v { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+pre { font-family: var(--font-mono); font-size: 13.5px; line-height: 1.55; background: var(--code-bg); border-radius: 12px; padding: 14px 16px; overflow-x: auto; margin: 0; }
+.phase { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+.phase header { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.phase h3 { margin: 0; }
+.phase ul { margin: 8px 0 0; padding-left: 20px; font-size: 15px; }
+.stack { display: flex; flex-direction: column; gap: 10px; }
+ul.check { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+ul.check li { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: start; font-size: 15px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+/* draw.io-style figures: the canvas stays white in both themes, like an exported .drawio page */
+.dio { margin: 14px 0 0; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--surface); }
+.dio-canvas { overflow-x: auto; background: #FFFFFF; }
+.dio-canvas svg { display: block; width: 100%; min-width: 760px; height: auto; }
+.dio figcaption { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 6px 10px; background: var(--code-bg); border-top: 1px solid var(--line); font-size: 13.5px; color: var(--ink-2); line-height: 1.4; }
+.dio .tab { font-family: var(--font-mono); font-size: 12px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-bottom: 2px solid var(--accent); padding: 3px 10px; border-radius: 6px 6px 0 0; white-space: nowrap; }
+.dio.bleed { width: min(980px, calc(100vw - 40px)); margin-left: calc(50% - min(490px, 50vw - 20px)); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; color: var(--ink-2); margin-top: 10px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 14px; height: 10px; border-radius: 3px; border: 1px solid; display: inline-block; }
+.acd { margin-top: 10px; border-top: 1px solid var(--line); padding-top: 8px; }
+.acd summary { cursor: pointer; font-size: 14px; font-weight: 600; color: var(--navy); }
+.aclist { margin: 8px 0 0; padding-left: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; font-size: 14.5px; line-height: 1.5; }
+.dod { margin: 8px 0 0; font-size: 14px; color: var(--ink-2); }
+footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--line); font-size: 14px; color: var(--ink-2); }
+.principle { font-family: var(--font-display); font-weight: 800; font-size: 20px; line-height: 1.35; color: var(--ink); margin: 0 0 8px; text-wrap: balance; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="doc">
+    <div class="brand">
+      <svg width="28" height="28" viewBox="0 0 64 64" aria-hidden="true"><path d="M4 30a28 28 0 0 1 56 0H44a12 12 0 0 0-24 0z" fill="#F5B42A"/><path d="M4 34h16a12 12 0 0 0 24 0h16a28 28 0 0 1-56 0z" fill="#AFC0D8"/><circle cx="32" cy="32" r="8.5" fill="#fff" stroke="#0B1A33" stroke-width="2"/><circle cx="32" cy="32" r="4.5" fill="#0B1A33"/></svg>
+      <span>Poke<span class="w">Worth</span></span>
+    </div>
+    <h1>High-Level Design: scan a card, identify the print, show its price</h1>
+    <p class="lede">A mobile app that photographs an English Pokémon trading card, identifies its exact print and shows an estimated market price. One app, no custom backend, on-device text recognition.</p>
+    <div class="meta">
+      <div><b>Platform</b>Android + web now · iOS later</div>
+      <div><b>Stack</b>Expo SDK 58 · React Native 0.88 · TypeScript</div>
+      <div><b>Stage</b>MVP</div>
+      <div><b>Plan dated</b>20 Oct 2026</div>
+    </div>
+  </header>
+
+  <nav class="toc" aria-label="Contents">
+    <ol>
+      <li><a href="#vision">1 Vision</a></li><li><a href="#scope">2 Scope</a></li><li><a href="#architecture">3 Architecture</a></li>
+      <li><a href="#stack">4 Stack</a></li><li><a href="#identification">5 Identification</a></li><li><a href="#screens">6 Screens</a></li>
+      <li><a href="#structure">7 Repository</a></li><li><a href="#phases">8 Phases</a></li><li><a href="#acceptance">9 Acceptance tests</a></li>
+      <li><a href="#future">10 Future</a></li>
+    </ol>
+  </nav>
+
+  <section id="vision">
+    <h2><span class="n">01</span>Product vision</h2>
+    <p>The user photographs one English Pokémon card. The app reads the card name and collector number, finds the matching print in a card catalog, asks the user to confirm when more than one print fits, then shows the available market price with its source, currency and date.</p>
+    <ol class="journey">
+      <li>Open the app and tap <b>Scan Card</b>.</li>
+      <li>Photograph the card inside the alignment guide.</li>
+      <li>On-device OCR reads the name and collector number, such as <code>4/102</code>.</li>
+      <li>Search the card catalog for matching candidates.</li>
+      <li>Confirm the correct set and variant when needed.</li>
+      <li>See the card image, details and available market price.</li>
+    </ol>
+    <p class="note">A price is an estimate, not a guaranteed resale value. It depends on the exact printing, condition, language, grading and whether market data exists.</p>
+  </section>
+
+  <section id="scope">
+    <h2><span class="n">02</span>MVP scope</h2>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Feature</th><th>Description</th><th>Priority</th><th>Status · P0 audit</th></tr></thead>
+        <tbody>
+          <tr><td>Card camera</td><td>Photograph a Pokémon card</td><td><span class="pill p0">P0</span></td><td><span class="pill s-part">Partial</span></td></tr>
+          <tr><td>On-device OCR</td><td>Read card name and collector number</td><td><span class="pill p0">P0</span></td><td><span class="pill s-part">Partial</span></td></tr>
+          <tr><td>Card matching</td><td>Find candidates by name, number and set</td><td><span class="pill p0">P0</span></td><td><span class="pill s-part">Partial</span></td></tr>
+          <tr><td>Match confirmation</td><td>Select the exact card and variant when uncertain</td><td><span class="pill p0">P0</span></td><td><span class="pill s-part">Partial</span></td></tr>
+          <tr><td>Market price</td><td>Show available price, currency, provider and timestamp</td><td><span class="pill p0">P0</span></td><td><span class="pill s-part">Partial</span></td></tr>
+          <tr><td>Manual search</td><td>Find cards without the camera</td><td><span class="pill p0">P0</span></td><td><span class="pill s-part">Partial</span></td></tr>
+          <tr><td>Recent scans</td><td>Save scan history locally</td><td><span class="pill p1">P1</span></td><td><span class="pill s-built">Built (basic)</span></td></tr>
+          <tr><td>Collection</td><td>Save owned cards and quantities</td><td><span class="pill p1">P1</span></td><td><span class="pill s-todo">Missing</span></td></tr>
+          <tr><td>Collection total</td><td>Sum available estimates for saved cards</td><td><span class="pill p1">P1</span></td><td><span class="pill s-todo">Missing</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="margin-top:12px"><b>Out of scope for v1:</b> accounts, cloud sync, payments, marketplaces, price alerts, graded-card appraisal and training custom computer-vision models.</p>
+  </section>
+</div>
+
+<section id="architecture" class="wide">
+  <div style="max-width:720px;margin:0 auto">
+    <h2><span class="n">03</span>Architecture</h2>
+    <p>Everything inside the dashed boundary runs on the phone. The only network dependency is the public TCGdex REST API for card records, images and prices. Photos never leave the device.</p>
+  </div>
+  <figure class="dio" aria-labelledby="cap-context">
+    <div class="dio-canvas" id="d-context"></div>
+    <figcaption id="cap-context"><span class="tab">context.drawio</span>System context: the phone runs everything except the card catalog. EAS builds and ships the app.</figcaption>
+  </figure>
+  <div style="max-width:720px;margin:28px auto 0">
+    <h3>Component layers</h3>
+    <p>Screens call TanStack Query hooks, the hooks call services, and only services touch native modules or the network. This keeps OCR and the card provider replaceable without changing screens.</p>
+  </div>
+  <figure class="dio" aria-labelledby="cap-components">
+    <div class="dio-canvas" id="d-components"></div>
+    <figcaption id="cap-components"><span class="tab">components.drawio</span>Solid arrows are calls. Dashed boxes are planned. Dashed arrows are dependencies or data feeds.</figcaption>
+  </figure>
+  <div style="max-width:720px;margin:0 auto" class="legend" aria-label="Legend">
+    <span><i style="background:#dae8fc;border-color:#6c8ebf"></i>Screens</span>
+    <span><i style="background:#e1d5e7;border-color:#9673a6"></i>State hooks / external API</span>
+    <span><i style="background:#d5e8d4;border-color:#82b366"></i>Services</span>
+    <span><i style="background:#fff2cc;border-color:#d6b656"></i>Native modules and storage</span>
+    <span><i style="background:#ffe6cc;border-color:#d79b00"></i>Build and delivery</span>
+  </div>
+  <div style="max-width:720px;margin:0 auto">
+    <div class="cols" style="margin-top:16px">
+      <div class="card"><b>App shell</b>Camera, navigation, results, manual search and the collection UI.</div>
+      <div class="card"><b>On-device OCR</b>Extracts text from the photo without uploading it to a server.</div>
+      <div class="card"><b>Card matcher</b>Normalizes OCR text and ranks candidates by name, collector number and set.</div>
+      <div class="card"><b>TCGdex API</b>Supplies card metadata, images and pricing where available.</div>
+      <div class="card"><b>Local storage</b>Keeps history, owned cards and quantities on the device.</div>
+    </div>
+    <p class="note"><span class="rule">Decision:</span> one mobile app and no custom backend. Add a backend only when it is needed for API-key protection, combining more price sources, shared accounts or stronger AI recognition.</p>
+  </div>
+</section>
+
+<div class="wrap" style="padding-top:0">
+  <section id="stack">
+    <h2><span class="n">04</span>Technology stack</h2>
+    <figure class="dio bleed" aria-labelledby="cap-stack" style="margin-top:0;margin-bottom:16px">
+      <div class="dio-canvas" id="d-stack"></div>
+      <figcaption id="cap-stack"><span class="tab">stack.drawio</span>Technologies by role. Dashed tiles are later or prototype-only.</figcaption>
+    </figure>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Area</th><th>Technology</th><th>In repo</th></tr></thead>
+        <tbody>
+          <tr><td>Mobile</td><td>React Native + Expo + TypeScript</td><td><span class="pill s-built">Yes</span></td></tr>
+          <tr><td>Navigation</td><td>Expo Router (<code>src/app/</code>)</td><td><span class="pill s-built">Yes</span></td></tr>
+          <tr><td>Camera</td><td><code>expo-camera</code></td><td><span class="pill s-built">Yes</span></td></tr>
+          <tr><td>OCR</td><td><code>expo-text-extractor</code></td><td><span class="pill s-built">Yes</span></td></tr><tr><td>OCR fallback (Expo Go / web)</td><td>OCR.space API + <code>expo-image-manipulator</code></td><td><span class="pill s-built">Yes</span></td></tr>
+          <tr><td>Cards and prices</td><td>TCGdex REST API</td><td><span class="pill s-built">Yes</span></td></tr>
+          <tr><td>API state and cache</td><td>TanStack Query</td><td><span class="pill s-built">Yes</span></td></tr>
+          <tr><td>Small app state</td><td>Zustand, only if needed</td><td><span class="pill s-todo">Not needed yet</span></td></tr>
+          <tr><td>Local storage</td><td>AsyncStorage; SQLite if the collection grows</td><td><span class="pill s-built">AsyncStorage</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="margin-top:12px"><b>Build note:</b> native OCR needs an Expo development build (<code>eas build --profile development</code> or <code>npx expo run:ios|android</code>). Expo Go cannot load it, so in Expo Go (including a free iPhone test) and on web a <b>cloud OCR fallback</b> (OCR.space free API, <code>cloud-ocr.service.ts</code>) reads the card instead; the photo then leaves the device. Turn it off with <code>EXPO_PUBLIC_CLOUD_OCR=off</code>.</p>
+    <p><b>Price data:</b> never assume a card or variant has a current price. Show the provider and currency, say clearly when no price exists, and do not imply precision the data does not have.</p>
+  </section>
+
+  <section id="identification">
+    <h2><span class="n">05</span>Card identification logic</h2>
+    <ol>
+      <li>Run OCR over the image and collect text lines.</li>
+      <li>Parse the card name (first plausible line near the top) and the collector number, such as <code>4/102</code> or <code>TG12/TG30</code>.</li>
+      <li>Normalize case, accents, spacing and punctuation.</li>
+      <li>Query the catalog by name.</li>
+      <li>Score each candidate on name, number and set agreement.</li>
+      <li>If the result is ambiguous, show 2–5 candidates for manual selection.</li>
+      <li>Ask the user to confirm the variant (normal, holo, reverse holo and so on) when the catalog or photo cannot tell them apart.</li>
+      <li>Show the matching market-price estimate.</li>
+    </ol>
+    <h3>Scan sequence as implemented</h3>
+    <figure class="dio bleed" aria-labelledby="cap-seq" style="margin-top:0;margin-bottom:8px">
+      <div class="dio-canvas" id="d-sequence"></div>
+      <figcaption id="cap-seq"><span class="tab">scan-sequence.drawio</span><span>From <code>scan.tsx</code>, <code>confirm.tsx</code> and <code>result.tsx</code>. Dashed arrows are returns.</span></figcaption>
+    </figure>
+    <h3>Scoring as implemented in <code>card-matcher.service.ts</code></h3>
+    <div class="card">
+      <div class="score">
+        <span>Name similarity (normalized Levenshtein)</span><span class="v">× 0.60</span><span class="bar"><i style="width:60%"></i></span>
+        <span>Collector number exact match</span><span class="v">+ 0.40</span><span class="bar"><i style="width:40%"></i></span>
+        <span>Printed set size equals set's official count</span><span class="v">+ 0.20</span><span class="bar"><i style="width:20%"></i></span>
+      </div>
+      <p style="margin:6px 0 0;font-size:14px;color:var(--ink-2)">Scores cap at 1.0. When no number is read, the name score is rescaled so it alone can reach 1.0. A match counts as <b>confident</b> only at ≥ 0.85 and at least 0.15 ahead of the runner-up; anything else goes to the Confirm screen.</p>
+    </div>
+    <p class="note rule">Rule: never silently treat a low-confidence match as the exact card.</p>
+  </section>
+
+  <section id="screens">
+    <h2><span class="n">06</span>Screens</h2>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Screen</th><th>Contents</th><th>Route</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td>Home</td><td>Scan Card button, manual search, recent scans</td><td><code>index.tsx</code></td><td><span class="pill s-part">Redesign specified</span></td></tr>
+          <tr><td>Camera</td><td>Card alignment guide and capture</td><td><code>scan.tsx</code></td><td><span class="pill s-part">Partial</span></td></tr>
+          <tr><td>Confirm Card</td><td>Possible matches with images and set names</td><td><code>confirm.tsx</code></td><td><span class="pill s-part">Partial · no variant step</span></td></tr>
+          <tr><td>Card Result</td><td>Image, name, set, number, variant, price, currency, source, updated time</td><td><code>result.tsx</code></td><td><span class="pill s-part">Partial</span></td></tr>
+          <tr><td>Search</td><td>Find a card by name or set</td><td><code>(tabs)/search.tsx</code></td><td><span class="pill s-todo">Planned</span></td></tr>
+          <tr><td>My Collection (P1)</td><td>Saved cards, quantities, estimated total value</td><td><code>(tabs)/collection.tsx</code></td><td><span class="pill s-todo">Planned</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="margin-top:12px">The Home redesign is specified in <code>design/home-spec.md</code>, with two candidate layouts. Both are clickable in the <a href="https://claude.ai/artifact/QQmGwNQ2sJ6dsjxWQz1xVX">PokeWorth web prototype</a>, which runs the full flow on an offline demo catalog.</p>
+  </section>
+
+  <section id="structure">
+    <h2><span class="n">07</span>Repository structure</h2>
+    <pre>pokeworth/
+├── src/
+│   ├── app/                      # Expo Router: every file is a screen
+│   │   ├── _layout.tsx
+│   │   ├── index.tsx             # Home
+│   │   ├── scan.tsx
+│   │   ├── confirm.tsx
+│   │   └── result.tsx
+│   ├── services/
+│   │   ├── ocr.service.ts
+│   │   ├── card-matcher.service.ts
+│   │   ├── tcgdex.service.ts
+│   │   └── storage.service.ts
+│   ├── hooks/use-cards.ts        # TanStack Query hooks
+│   ├── types/card.ts
+│   └── utils/text.ts             # normalize, levenshtein, similarity
+├── design/                       # references, home-spec.md
+├── prototype/web/                # browser prototype
+├── assets/
+└── package.json</pre>
+    <p style="margin-top:12px">Integrations sit behind small service modules, so the OCR engine or the card and price provider can be replaced without rewriting screens.</p>
+  </section>
+
+  <section id="phases">
+    <h2><span class="n">08</span>Development phases</h2>
+    <p>Each phase is defined in <code>docs/dev-phases.md</code> and runs through one reusable workflow, <code>.claude/workflows/pokeworth-phase.js</code>: <b>Plan</b> (read spec and code, list tasks) → <b>Build</b> (one agent per task) → <b>Review</b> (correctness, spec and platform reviewers; each finding challenged, then fixed) → <b>Gate</b> (typecheck, lint, smoke and fixture tests; results written to <code>docs/status.md</code>).</p>
+    <pre>Run the pokeworth-phase workflow with args { "phase": "P1" }
+Optional: "layout": "r1" | "r2"   "dryRun": true   "only": ["P2.3"]   "maxTasks": 8   "reviewRounds": 1</pre>
+    <div class="note" style="margin-top:14px"><b>P0 audit result</b> (<code>docs/status.md</code>, commit <code>33b35cf</code>): typecheck, lint and the smoke test pass. Six P0 features are partial, recent scans are basic, collection is missing. Top issues to fix next:
+      <ul style="margin:8px 0 0;padding-left:20px">
+        <li><b>P2 · tie bug:</b> the set-size bonus is capped at 1.0, so a <code>4/102</code> read ties three Charizard printings at 100%.</li>
+        <li><b>P2 · price labels:</b> Cardmarket “Normal” appears on holo-only cards; holo and reverse holo are merged; a missing currency falls back to a guess.</li>
+        <li><s><b>P1 · dead ends</b></s> fixed in P1: “Open Settings”, Cancel in every state, and a new manual-entry screen that keeps the photo.</li>
+        <li><s><b>P1 · parsing</b></s> fixed in P1: promo numbers (SWSH284, SVP 085) parsed; 13 offline OCR fixtures pass.</li>
+        <li><b>P4 · robustness:</b> no fetch timeout, no image caching (<code>expo-image</code> unused), no accessibility labels; <code>tsx</code> missing from dev dependencies broke the smoke gate once.</li>
+      </ul>
+    </div>
+    <div class="card" style="margin-top:14px"><b>Definition of Done (every phase)</b>
+      <ol style="margin:6px 0 0;padding-left:20px;font-size:15px">
+        <li>Every task done, or blocked with a reason and a follow-up.</li>
+        <li>Every acceptance criterion marked met, not met or needs human in <code>docs/status.md</code>.</li>
+        <li>Gates pass: typecheck, lint, OCR fixtures, smoke test, and <code>npm test</code> once it exists.</li>
+        <li>No confirmed high or medium review finding left unfixed.</li>
+        <li>No new lint suppressions, untyped <code>any</code> or unexplained TODOs.</li>
+        <li>Docs match the code (status, phases, acceptance tests).</li>
+        <li>HLD artifact (and prototype if affected) republished.</li>
+        <li>Committed on the phase branch; nothing pushed or merged without approval.</li>
+        <li>Human-only items listed with an owner.</li>
+      </ol>
+      <p style="margin:8px 0 0;font-size:14px;color:var(--ink-2)">The workflow checks 1–6 and records the acceptance results; the person running it does 7–9.</p>
+    </div>
+    <div class="card" style="margin-top:14px"><b>Free test environments</b>
+      <div class="table-scroll" style="margin-top:8px"><table>
+        <thead><tr><th>Environment</th><th>Start</th><th>OCR</th><th>Best for</th></tr></thead>
+        <tbody>
+          <tr><td>Android emulator · dev build</td><td>Android Studio → Pixel with Google Play image → <code>npx expo run:android</code></td><td>Yes</td><td>Real scans (webcam or imported photos), permissions, TalkBack, release build</td></tr>
+          <tr><td>Chrome</td><td><code>npx expo start --web</code>, device toolbar 393 × 852</td><td>No</td><td>Layout, navigation, offline and slow network, storage</td></tr>
+          <tr><td>Expo Go</td><td>Expo Go in the emulator or on an iPhone → <code>npx expo start --go --tunnel</code></td><td>Cloud fallback</td><td>Fast UI iteration; free iPhone testing</td></tr>
+        </tbody></table></div>
+      <p style="margin:8px 0 0;font-size:14px;color:var(--ink-2)">Each phase below has a “How to test” panel with step-by-step checks mapped to its acceptance criteria. Full tips: <code>docs/dev-phases.md</code>.</p>
+    </div>
+    <div class="stack" style="margin-top:14px">
+      <div class="phase" id="phase-p0"><header><h3>P0 · Baseline audit</h3><span class="pill s-built">Done · 4 Nov 2026</span></header>
+        <ul><li>Run all quality gates and record results.</li><li>Mark each HLD feature built, partial or missing with file references.</li><li>List risky spots: unhandled errors, missing states, hard-coded values.</li><li>Write <code>docs/status.md</code>.</li></ul><details class="acd howto"><summary>How to test (emulator · Chrome · Expo Go)</summary><p class="dod" style="margin-top:10px"><b>Any terminal</b></p><ul class="aclist" style="list-style:disc;padding-left:20px"><li>Run the gates: <code>npx tsc --noEmit</code>, <code>npx expo lint</code>, <code>npx tsx scripts/ocr-fixtures.ts</code>, <code>npx tsx scripts/smoke-test.ts</code>.</li><li>Read <code>docs/status.md</code> and spot-check three file references.</li></ul></details><details class="acd"><summary>Acceptance criteria (4) · Definition of Done</summary><ol class="aclist"><li><span class="pill s-built">Met</span> <b>AC-P0.1</b> docs/status.md lists every gate with pass/fail and an output excerpt.</li><li><span class="pill s-built">Met</span> <b>AC-P0.2</b> Each of the 9 HLD MVP features has a status (built / partial / missing) and at least one file reference.</li><li><span class="pill s-built">Met</span> <b>AC-P0.3</b> Each risk is filed under a phase P1–P6 with a <code>file:line</code> reference.</li><li><span class="pill s-built">Met</span> <b>AC-P0.4</b> No file under <code>src/</code> changed.</li></ol><p class="dod"><b>Done when:</b> Shared Definition of Done, plus: <code>docs/status.md</code> committed.; HLD artifact shows the audit statuses..</p></details></div>
+      <div class="phase" id="phase-p1"><header><h3>P1 · Scan reliability</h3><span class="pill s-part">Tested · native build pending</span></header>
+        <ul><li>Camera permission states, including “Open Settings”.</li><li>Card alignment frame and capture busy state.</li><li>OCR unavailable or empty → manual entry, never a dead end.</li><li>Dev-only OCR debug panel; <code>eas.json</code> profiles.</li><li>Offline OCR fixture script <code>scripts/ocr-fixtures.ts</code>.</li><li>Follow-up P1.7: “Import photo” from the gallery, same path as a camera photo.</li></ul><p style="margin:8px 0 0;font-size:14px;color:var(--ink-2)"><b>Needs you:</b> run a development build on the free Android emulator with the webcam or imported photos (iOS deferred).</p><p style="margin:8px 0 0;font-size:14px"><b>Result (4 Nov 2026, branch <code>feat/p1-scan-reliability</code>, commit <code>36ce9fa</code>):</b> all six tasks done; typecheck, lint, smoke test and 13/13 OCR fixtures pass. Review caught and fixed two issues: photos were passed in the URL on web (now an in-memory capture store) and the Cancel tap target was too small. New: <code>src/app/manual-entry.tsx</code>, <code>src/components/ocr-debug-panel.tsx</code>, <code>eas.json</code>, <code>expo-dev-client</code>, <code>scripts/ocr-fixtures.ts</code>.</p><details class="acd howto"><summary>How to test (emulator · Chrome · Expo Go)</summary><p class="dod" style="margin-top:10px"><b>Android emulator (dev build)</b></p><ul class="aclist" style="list-style:disc;padding-left:20px"><li>First launch → Scan → "Allow camera access" → camera opens (AC-P1.1).</li><li>Deny the permission twice ("Don't allow"), reopen Scan → "Camera access is off" with "Open Settings" and "Enter card manually"; both work (AC-P1.2).</li><li>Point the webcam at a real card → Confirm opens; expand the OCR debug panel and check the raw lines (AC-P1.8, AC-P1.9).</li><li>"Import photo" → pick a JPG from Pictures → same path as the camera (AC-P1.11).</li><li>Cover the card or import a blank photo → Manual entry shows the photo; continue to Confirm (AC-P1.6).</li><li>Double-tap the shutter quickly → only one capture (AC-P1.5).</li><li>Create a small device (e.g. 4.7" Pixel) and switch to 3-button navigation → frame fully visible, controls above the nav bar (AC-P1.4).</li></ul><p class="dod" style="margin-top:10px"><b>Chrome</b></p><ul class="aclist" style="list-style:disc;padding-left:20px"><li>Scan with the laptop webcam → no OCR on web → Manual entry with the photo (AC-P1.6).</li><li>Check the address bar never contains photo data (AC-P1.7).</li><li>Block the camera in site settings → denied state; Cancel leaves the screen without a back button (AC-P1.3).</li></ul><p class="dod" style="margin-top:10px"><b>Expo Go</b></p><ul class="aclist" style="list-style:disc;padding-left:20px"><li>Scan → OCR unavailable → Manual entry keeps the photo; permission dialogs are the native Android ones.</li></ul></details><p style="margin:8px 0 0;font-size:14px"><b>Test run (4 Nov 2026, Chrome + Android emulator in Expo Go):</b> gates pass; 7 of 11 criteria met, 3 partly met. Found and fixed: Scan now re-checks camera permission when the app returns from Settings (confirm in the native build); the Expo Go “Cannot find native module ExpoTextExtractor” overlay is gone (re-tested on the emulator). <b>Blocked:</b> the native Android build fails on Windows’ 260-character path limit; fix with the EAS free plan (free Expo account) or Windows long paths + newer CMake. Full results in <code>docs/status.md</code>.</p><details class="acd"><summary>Acceptance criteria (11) · Definition of Done</summary><ol class="aclist"><li><span class="pill s-built">Met</span> <b>AC-P1.1</b> Given camera permission was never asked, Scan shows an explanation and "Allow camera access". (C1)</li><li><span class="pill s-part">Partly met</span> <b>AC-P1.2</b> Given permission is permanently denied, Scan shows "Open Settings" and "Enter card manually", and both work. (C1, E3)</li><li><span class="pill s-built">Met</span> <b>AC-P1.3</b> Every Scan state has a visible Cancel that leaves the screen on iOS, Android and web.</li><li><span class="pill s-part">Partly met</span> <b>AC-P1.4</b> The 63:88 frame stays fully on screen at 375×667 and 430×932; capture controls sit above the system navigation area.</li><li><span class="pill s-built">Met</span> <b>AC-P1.5</b> A second shutter tap during a capture does nothing.</li><li><span class="pill s-part">Partly met</span> <b>AC-P1.6</b> When OCR is unavailable, finds no text, or throws, the user lands on Manual entry with the photo shown and can continue to Confirm. No path relies on <code>Alert</code> alone. (C2, E2)</li><li><span class="pill s-built">Met</span> <b>AC-P1.7</b> Photo URIs never appear in route params or the URL.</li><li><span class="pill s-todo">Needs you</span> <b>AC-P1.8</b> The OCR debug panel renders only in <code>__DEV__</code> builds.</li><li><span class="pill s-todo">Blocked</span> <b>AC-P1.9</b> A development build runs on the Android emulator (<code>npx expo run:android</code>) and OCR reads a card through the webcam or an imported photo. (needs human)</li><li><span class="pill s-built">Met</span> <b>AC-P1.10</b> <code>scripts/ocr-fixtures.ts</code> covers promo, TG, leading zeros, stage/HP and Illus. lines and passes offline. (G4)</li><li><span class="pill s-built">Met</span> <b>AC-P1.11</b> Scan offers "Import photo"; an imported image follows the same path as a camera photo, including manual entry when OCR fails, on Android and web. (E2)</li></ol><p class="dod"><b>Done when:</b> Shared Definition of Done, plus: Development build tested on the Android emulator and recorded in <code>docs/status.md</code> (needs human). iOS deferred..</p></details></div>
+      <div class="phase" id="phase-p2"><header><h3>P2 · Identification and pricing</h3><span class="pill s-todo">Not started</span></header>
+        <ul><li>2–5 candidates with images and match reasons; no auto-advance on low confidence.</li><li>Variant choice before any price.</li><li>Provider, currency and date on every price; explicit “No price available”.</li><li>Manual Search screen; matcher edge-case fixtures.</li></ul><p style="margin:8px 0 0;font-size:14px;color:var(--ink-2)"><b>Needs you:</b> spot-check 10 real prices against TCGplayer and Cardmarket.</p><details class="acd howto"><summary>How to test (emulator · Chrome · Expo Go)</summary><p class="dod" style="margin-top:10px"><b>Android emulator (dev build)</b></p><ul class="aclist" style="list-style:disc;padding-left:20px"><li>Scan or import a Base Set Charizard <code>4/102</code> photo → <code>base1-4</code> is first (AC-P2.2).</li><li>A card with several printings → variant picker appears before any price (AC-P2.4).</li><li>A card with no market data → "No price available", no number (AC-P2.6).</li><li>An ambiguous read → no auto-advance; you must pick (AC-P2.3).</li></ul><p class="dod" style="margin-top:10px"><b>Chrome</b></p><ul class="aclist" style="list-style:disc;padding-left:20px"><li>Search <code>Charizard</code> and <code>4/102</code> → correct prints, result opens (AC-P2.8).</li><li>Open each price next to the TCGplayer and Cardmarket pages for the same card and variant (10-card spot-check).</li><li>DevTools → Network: inspect the TCGdex JSON when a price looks wrong (AC-P2.5, AC-P2.7).</li></ul><p class="dod" style="margin-top:10px"><b>Expo Go</b></p><ul class="aclist" style="list-style:disc;padding-left:20px"><li>Repeat the Search and Result checks on Android for layout and text overflow.</li></ul></details><details class="acd"><summary>Acceptance criteria (9) · Definition of Done</summary><ol class="aclist"><li><b>AC-P2.1</b> When two or more candidates exist, Confirm shows 2–5 of them, each with image (or a plain no-image box), set name (not the id), number and match reasons.</li><li><b>AC-P2.2</b> Candidates that tie on name and number are separated by set size: for a <code>4/102</code> read, Base Set Charizard (<code>base1-4</code>) ranks first. (U3)</li><li><b>AC-P2.3</b> A match auto-advances only when <code>isConfidentMatch</code> is true (≥ 0.85 and ≥ 0.15 ahead); otherwise the user must pick. (B3, C3)</li><li><b>AC-P2.4</b> For a card with more than one printing, a variant picker appears before any price. (C4, E5)</li><li><b>AC-P2.5</b> Every displayed price shows provider, variant, currency and date; a missing currency shows "currency unknown" and a missing date shows "date unknown". (U4)</li><li><b>AC-P2.6</b> A card with no price data shows "No price available" and no number. (E6)</li><li><b>AC-P2.7</b> Cardmarket base prices are not labelled "Normal" on holo-only cards; holo and reverse holo are separate rows. (U4)</li><li><b>AC-P2.8</b> Search finds a card by name and by <code>number/total</code> (e.g. <code>4/102</code>); a result opens Result. (E4)</li><li><b>AC-P2.9</b> Fixtures cover same name across sets, set-size tie-breaks and <code>ex</code>/<code>V</code>/<code>VMAX</code> names, and pass offline. (G4)</li></ol><p class="dod"><b>Done when:</b> Shared Definition of Done, plus: 10-card price spot-check recorded in <code>docs/status.md</code> (needs human)..</p></details></div>
+      <div class="phase" id="phase-p3"><header><h3>P3 · Home redesign</h3><span class="pill s-part">Waiting on layout choice</span></header>
+        <ul><li>Design tokens, <code>react-native-svg</code> and gradients.</li><li>Tab navigation in <code>src/app/(tabs)/</code> with a custom tab bar.</li><li>Home components from <code>design/home-spec.md</code>; demo data gated to dev.</li><li>Recent Scans “See All” and Settings routes; marked art placeholders.</li></ul><p style="margin:8px 0 0;font-size:14px;color:var(--ink-2)"><b>Needs you:</b> choose layout r1 or r2; supply licensed hero and card-back art.</p><details class="acd howto"><summary>How to test (emulator · Chrome · Expo Go)</summary><p class="dod" style="margin-top:10px"><b>Chrome</b></p><ul class="aclist" style="list-style:disc;padding-left:20px"><li>Device toolbar at 393 × 852 → compare each Home section with the chosen reference image side by side (AC-P3.2).</li><li>DevTools → Rendering → emulate light and dark <code>prefers-color-scheme</code> → Home stays dark (AC-P3.7).</li><li>Click every entry point: Scan Card, Search Manually, See All, Collection (AC-P3.4).</li><li>Clear Local Storage with a dev build → "Demo" scans appear; add a real scan → demo rows disappear (AC-P3.5).</li></ul><p class="dod" style="margin-top:10px"><b>Android emulator (dev build)</b></p><ul class="aclist" style="list-style:disc;padding-left:20px"><li>Developer options → Simulate a display cutout → nothing hidden under the notch or tab bar (AC-P3.7).</li><li>Switch tabs, open Scan and Result, press Back → returns to the same tab with state kept (AC-P3.3).</li><li>Run E1 and E2 again (AC-P3.8).</li></ul><p class="dod" style="margin-top:10px"><b>Expo Go</b></p><ul class="aclist" style="list-style:disc;padding-left:20px"><li>Fast visual iteration on the Home components; <code>react-native-svg</code> works in Expo Go.</li></ul></details><details class="acd"><summary>Acceptance criteria (8) · Definition of Done</summary><ol class="aclist"><li><b>AC-P3.1</b> All colours, type sizes, spacing and radii on Home come from <code>src/theme/tokens.ts</code>; Home components contain no hex literals.</li><li><b>AC-P3.2</b> Home matches the chosen reference section by section (spec §3 for r1, §4 for r2); the reviewer compares a web screenshot and finds no section missing.</li><li><b>AC-P3.3</b> Tabs (Home, Collection, Search, plus Stats for r2) switch without losing state; Scan, Confirm and Result open above the tabs and Back returns to the tab.</li><li><b>AC-P3.4</b> Scan Card, Search Manually, See All and the Collection entry point each open the right route.</li><li><b>AC-P3.5</b> Demo recent scans appear only when <code>__DEV__</code> and history is empty, carry a visible "Demo" marker, and never mix with stored scans.</li><li><b>AC-P3.6</b> Missing artwork shows marked placeholders; no unrelated or unlicensed artwork is added.</li><li><b>AC-P3.7</b> Home is dark in both system themes with a light status bar; nothing is hidden under the notch or tab bar at 375 and 430 pt widths.</li><li><b>AC-P3.8</b> Scan, Manual entry, Confirm and Result behave as before (E1 and E2 still pass).</li></ol><p class="dod"><b>Done when:</b> Shared Definition of Done, plus: Layout decision (r1 / r2) recorded in <code>docs/status.md</code>.; Check on the Android emulator and web by a human..</p></details></div>
+      <div class="phase" id="phase-p4"><header><h3>P4 · MVP hardening</h3><span class="pill s-todo">Not started</span></header>
+        <ul><li>Loading, empty, error and retry states everywhere.</li><li>Network timeouts, typed errors, tuned caching; <code>expo-image</code>.</li><li>Accessibility labels, 44 pt targets, Dynamic Type; list performance.</li><li>Photo test matrix document.</li><li>Unit/component tests (<code>jest-expo</code>) and Maestro E2E flows from the acceptance plan.</li></ul><p style="margin:8px 0 0;font-size:14px;color:var(--ink-2)"><b>Needs you:</b> run the photo test matrix on the Android emulator with imported photos.</p><details class="acd howto"><summary>How to test (emulator · Chrome · Expo Go)</summary><p class="dod" style="margin-top:10px"><b>Android emulator (dev build)</b></p><ul class="aclist" style="list-style:disc;padding-left:20px"><li>Airplane mode → each network screen shows an error with Retry; turn it off → Retry works (AC-P4.3).</li><li>Extended controls → Cellular → slow network → loading states, then the timeout message (AC-P4.1, AC-P4.2).</li><li>Install Android Accessibility Suite from the Play Store, turn on TalkBack → complete a scan and a search (AC-P4.5).</li><li>Settings → Display → largest font and display size → no clipped text (AC-P4.5).</li><li>Run <code>npm test</code> and the Maestro flows (<code>maestro test .maestro/</code>; on Windows follow Maestro's install guide, which may use WSL) (AC-P4.7, AC-P4.8).</li><li>Run the photo test matrix with imported photos and the webcam (P4.6).</li></ul><p class="dod" style="margin-top:10px"><b>Chrome</b></p><ul class="aclist" style="list-style:disc;padding-left:20px"><li>Network "Offline" and "Slow 3G" on Search, Confirm and Result (AC-P4.3).</li><li>Lighthouse accessibility audit; Tab through every control; zoom 200 % (AC-P4.5).</li></ul><p class="dod" style="margin-top:10px"><b>Expo Go</b></p><ul class="aclist" style="list-style:disc;padding-left:20px"><li>Dev menu → Performance monitor while scrolling long lists (AC-P4.4).</li></ul></details><details class="acd"><summary>Acceptance criteria (9) · Definition of Done</summary><ol class="aclist"><li><b>AC-P4.1</b> Home, Confirm, Result and Search each have loading, empty, error and retry states built from shared components. (C1–C4)</li><li><b>AC-P4.2</b> TCGdex requests time out (about 10 s) and errors are typed (offline, not found, server, bad response); each message matches its cause.</li><li><b>AC-P4.3</b> In airplane mode every network screen shows a friendly error with Retry, and Retry works after reconnecting. (E7)</li><li><b>AC-P4.4</b> All card images use <code>expo-image</code> with caching; list thumbnails use the <code>low</code> quality image.</li><li><b>AC-P4.5</b> Every pressable has an accessibility label and role; touch targets are ≥ 44 pt; text at the largest size does not clip. (Q2)</li><li><b>AC-P4.6</b> No unhandled promise rejections remain in storage writes or screen effects.</li><li><b>AC-P4.7</b> <code>npm test</code> runs U1–U5 and C1–C4 offline and passes; <code>src/services</code> and <code>src/utils</code> coverage ≥ 80 %.</li><li><b>AC-P4.8</b> Maestro flows E1–E7 and E9 pass on the Android emulator; E2, E4, E6 and E7 also work in Chrome.</li><li><b>AC-P4.9</b> <code>docs/photo-test-matrix.md</code> lists each condition with its expected outcome.</li></ol><p class="dod"><b>Done when:</b> Shared Definition of Done, plus: Photo test matrix run on the Android emulator with imported photos and the webcam, and results recorded (needs human)..</p></details></div>
+      <div class="phase" id="phase-p5"><header><h3>P5 · Collection</h3><span class="pill s-todo">Not started</span></header>
+        <ul><li>Versioned collection storage with quantities and last known price.</li><li>Add to collection from Result; Collection tab with total value.</li><li>Unpriced cards flagged and left out of the total.</li><li>Stats tab when layout r2 is chosen.</li></ul><details class="acd howto"><summary>How to test (emulator · Chrome · Expo Go)</summary><p class="dod" style="margin-top:10px"><b>Android emulator (dev build)</b></p><ul class="aclist" style="list-style:disc;padding-left:20px"><li>Add two cards with different variants and quantities, change and remove one (AC-P5.2, AC-P5.3).</li><li>Swipe the app away (or <code>adb shell am force-stop &lt;package&gt;</code>) and reopen → collection unchanged (AC-P5.6).</li><li>Pull to refresh → prices and dates update (AC-P5.5).</li></ul><p class="dod" style="margin-top:10px"><b>Chrome</b></p><ul class="aclist" style="list-style:disc;padding-left:20px"><li>Reload the page → collection persists (AC-P5.6).</li><li>DevTools → Application → edit <code>pokeworth.collection.v1</code> to invalid JSON → empty collection, no crash (AC-P5.1).</li><li>Add a card without a price → total excludes it and says so (AC-P5.4).</li></ul><p class="dod" style="margin-top:10px"><b>Expo Go</b></p><ul class="aclist" style="list-style:disc;padding-left:20px"><li>Same add/remove checks; Expo Go keeps its own storage per project.</li></ul></details><details class="acd"><summary>Acceptance criteria (7) · Definition of Done</summary><ol class="aclist"><li><b>AC-P5.1</b> Collection storage is versioned (<code>pokeworth.collection.v1</code>); corrupt data gives an empty collection, not a crash. (U5)</li><li><b>AC-P5.2</b> From Result the user adds a card with a chosen variant and quantity; adding the same card and variant again increases the quantity.</li><li><b>AC-P5.3</b> Collection lists each entry with quantity and value; quantities can be changed and entries removed.</li><li><b>AC-P5.4</b> Total value sums priced cards only and states how many cards were left out and why. (C5)</li><li><b>AC-P5.5</b> Pull-to-refresh updates prices and their dates; cached prices are reused within <code>staleTime</code>.</li><li><b>AC-P5.6</b> The collection survives an app restart. (E8)</li><li><b>AC-P5.7</b> (r2) Stats shows total, value by set and top cards, and its total equals the Collection total.</li></ol><p class="dod"><b>Done when:</b> Shared Definition of Done.</p></details></div>
+      <div class="phase" id="phase-p6"><header><h3>P6 · Release preparation</h3><span class="pill s-todo">Not started</span></header>
+        <ul><li><code>app.json</code> branding, splash and permission text.</li><li>EAS Update channels and runtime version policy.</li><li>About screen with TCGdex attribution and disclaimers.</li><li>Demo and debug code removed from production; release checklist.</li><li>Run acceptance layers 1–3 and prepare the 50-card benchmark sheet.</li></ul><p style="margin:8px 0 0;font-size:14px;color:var(--ink-2)"><b>Needs you:</b> store publishing is optional and paid (Google Play one-time fee, Apple yearly fee); until then share the Android APK for free.</p><details class="acd howto"><summary>How to test (emulator · Chrome · Expo Go)</summary><p class="dod" style="margin-top:10px"><b>Android emulator (release build)</b></p><ul class="aclist" style="list-style:disc;padding-left:20px"><li><code>npx expo run:android --variant release</code> → app name, icon and navy splash correct (AC-P6.1).</li><li>No dev menu, no OCR debug panel, no demo scans (AC-P6.4).</li><li>Settings → About shows attribution and disclaimers (AC-P6.3).</li><li>Share the release APK by dragging it onto a fresh emulator to confirm it installs.</li></ul><p class="dod" style="margin-top:10px"><b>Chrome</b></p><ul class="aclist" style="list-style:disc;padding-left:20px"><li><code>npx expo export --platform web</code>, then <code>npx serve dist</code> → production web build works with no demo data.</li></ul><p class="dod" style="margin-top:10px"><b>Any terminal</b></p><ul class="aclist" style="list-style:disc;padding-left:20px"><li><code>npx expo-doctor</code> is clean (AC-P6.2); run acceptance layers 1–3 and fill in the sign-off table (AC-P6.6).</li></ul><p class="dod" style="margin-top:10px"><b>Expo Go</b></p><ul class="aclist" style="list-style:disc;padding-left:20px"><li>Not used: Expo Go is always a development environment, so it cannot prove release behaviour.</li></ul></details><details class="acd"><summary>Acceptance criteria (6) · Definition of Done</summary><ol class="aclist"><li><b>AC-P6.1</b> <code>app.json</code> has the PokeWorth name, final icons, navy splash, dark style, bundle identifier, Android package and camera permission text.</li><li><b>AC-P6.2</b> <code>eas.json</code> profiles map to update channels, a runtime version policy is set, and <code>npx expo-doctor</code> is clean. (G3)</li><li><b>AC-P6.3</b> An About screen, reachable from Settings, shows TCGdex attribution, "prices are estimates" and "not affiliated with Nintendo / The Pokémon Company".</li><li><b>AC-P6.4</b> A production build has no reachable demo data, OCR debug panel or dev menu. (Q4)</li><li><b>AC-P6.5</b> <code>docs/release-checklist.md</code> covers store listing, screenshots, privacy answers and version bumps.</li><li><b>AC-P6.6</b> Acceptance layers 1–3 are signed off and the 50-card benchmark sheet is ready.</li></ol><p class="dod"><b>Done when:</b> Shared Definition of Done, plus: Acceptance layers 4–5 signed off (needs human).; Store submission done, or the release APK shared directly (needs human)..</p></details></div>
+    </div>
+    <p style="margin-top:12px;font-size:14px;color:var(--ink-2)">Order: P0 → P1 → P2 → P3 and P4 → P5 → P6. Agents edit files but never commit, push or start EAS builds; run each phase on a feature branch.</p>
+  </section>
+
+  <section id="acceptance">
+    <h2><span class="n">09</span>Acceptance tests</h2>
+    <p>The MVP is approved when all five layers pass and the sign-off table in <code>docs/acceptance-tests.md</code> is filled in. Layers 1–3 run automatically on every change; layers 4–5 need real cards and real phones. P4 builds the automated tests; P6 runs the sign-off.</p>
+    <p class="note"><b>Free test setup:</b> Android Studio's emulator (Google Play image) and Chrome on Windows; real cards reach the emulator through the webcam or imported photos. <b>Deferred:</b> iOS builds, iOS Simulator flows and VoiceOver, until a Mac or a paid Apple Developer account is available. Store publishing is optional and paid; sharing the Android APK is free.</p>
+    <div class="stack">
+      <div class="phase"><header><h3>Layer 1 · Static gates</h3><span class="pill s-built">Automated · every commit</span></header>
+        <ul><li><code>tsc --noEmit</code>, <code>expo lint</code>, <code>expo-doctor</code></li><li>OCR fixtures (13 offline cases today)</li><li>Smoke test against live TCGdex</li></ul><p style="margin:8px 0 0;font-size:14px;color:var(--ink-2)"><b>Passes when:</b> every command exits 0.</p></div>
+      <div class="phase"><header><h3>Layer 2 · Unit and component tests</h3><span class="pill s-built">Automated · added in P4</span></header>
+        <ul><li><code>jest-expo</code> + React Native Testing Library, TCGdex responses recorded so it runs offline</li><li>Text matching, OCR parsing, ranking (incl. the tie bug), price extraction, storage</li><li>Screen states: permissions, manual entry, Confirm, Result prices, Collection total</li></ul><p style="margin:8px 0 0;font-size:14px;color:var(--ink-2)"><b>Passes when:</b> <code>npm test</code> passes; services and utils ≥ 80 % covered (proposed).</p></div>
+      <div class="phase"><header><h3>Layer 3 · End-to-end flows</h3><span class="pill s-built">Automated · added in P4</span></header>
+        <ul><li>Maestro flows E1–E9 on the Android emulator; key flows also checked in Chrome</li><li>Scan happy path, OCR failure, permission denied, manual search, variant choice</li><li>No price, offline + retry, collection survives restart, recent scans</li></ul><p style="margin:8px 0 0;font-size:14px;color:var(--ink-2)"><b>Passes when:</b> all nine flows pass on the Android emulator.</p></div>
+      <div class="phase"><header><h3>Layer 4 · Real-card accuracy benchmark</h3><span class="pill s-part">Needs you</span></header>
+        <ul><li>50 real cards (vintage, modern, promos, trainers, same-name pairs)</li><li>Photographed under good light, glare, blur, angle, busy background, sleeve, via the webcam or imported photos</li><li>Results recorded in <code>docs/benchmark/results.csv</code></li></ul><p style="margin:8px 0 0;font-size:14px;color:var(--ink-2)"><b>Passes when:</b> top-1 ≥ 85 %, in candidates ≥ 95 %, <b>zero wrong auto-confirms</b>, manual entry always reaches the card (targets proposed).</p></div>
+      <div class="phase"><header><h3>Layer 5 · Device, price and quality</h3><span class="pill s-part">Needs you</span></header>
+        <ul><li>Development and release builds run on the Android emulator</li><li>10 prices spot-checked against TCGplayer and Cardmarket; missing prices say so</li><li>Speed (capture → candidates < 5 s), TalkBack, photos never leave the phone, no demo/debug code in production</li></ul><p style="margin:8px 0 0;font-size:14px;color:var(--ink-2)"><b>Passes when:</b> every check is signed off in <code>docs/acceptance-tests.md</code>.</p></div>
+    </div>
+    <h3>HLD criteria → tests</h3>
+    <div class="table-scroll"><table><thead><tr><th>Criterion</th><th>Proven by</th><th>Status</th></tr></thead><tbody><tr><td>User can photograph a real English Pokémon card on iOS or Android.</td><td><code>D1, D2, E1</code></td><td><span class="pill s-todo">Open</span></td></tr><tr><td>OCR detects useful text on a representative sample of cards.</td><td><code>B1, B5, U2</code></td><td><span class="pill s-todo">Open</span></td></tr><tr><td>App suggests plausible matches and allows corrections.</td><td><code>B2, C3, E2, E4</code></td><td><span class="pill s-todo">Open</span></td></tr><tr><td>App distinguishes, or asks for, the correct set and printing before pricing.</td><td><code>B3, U3, C4, E5</code></td><td><span class="pill s-todo">Open</span></td></tr><tr><td>Result screen shows the price with source, currency and freshness, or says clearly that no price is available.</td><td><code>U4, C4, E6, P1, P2</code></td><td><span class="pill s-todo">Open</span></td></tr><tr><td>Manual lookup works when OCR fails.</td><td><code>B4, E2, E3, E4</code></td><td><span class="pill s-todo">Open</span></td></tr><tr><td>Core flow works without a custom backend or login.</td><td><code>Q3, E1</code></td><td><span class="pill s-todo">Open</span></td></tr></tbody></table></div>
+    <p class="note rule">Hard rule (B3): zero wrong cards auto-confirmed, in any photo condition.</p>
+  </section>
+
+  <section id="future">
+    <h2><span class="n">10</span>Future enhancements</h2>
+    <div class="cols">
+      <div class="card">Scan several cards in one photo</div>
+      <div class="card">Image-embedding recognition if text matching falls short</div>
+      <div class="card">Currency conversion to ILS</div>
+      <div class="card">Compare several price providers</div>
+      <div class="card">Price history and alerts</div>
+      <div class="card">Cloud collection sync</div>
+      <div class="card">Condition and graded estimates, given reliable data</div>
+    </div>
+  </section>
+
+  <footer>
+    <p class="principle">Keep v1 simple, make identification reliable, and never invent a price when market data is unavailable.</p>
+    <p>First milestone: <code>Camera → OCR → Matching → User confirmation → Card price</code>. Source: <code>pokeworth-high-level-plan-20-10-2026.md</code>. Not affiliated with Nintendo or The Pokémon Company.</p>
+  </footer>
+</div>
+<script>
+'use strict';
+/* draw.io-style diagram renderer. Brand marks: Simple Icons 13.21.0 (CC0); trademarks belong to their owners. */
+const BRAND = {"react":"M14.23 12.004a2.236 2.236 0 0 1-2.235 2.236 2.236 2.236 0 0 1-2.236-2.236 2.236 2.236 0 0 1 2.235-2.236 2.236 2.236 0 0 1 2.236 2.236zm2.648-10.69c-1.346 0-3.107.96-4.888 2.622-1.78-1.653-3.542-2.602-4.887-2.602-.41 0-.783.093-1.106.278-1.375.793-1.683 3.264-.973 6.365C1.98 8.917 0 10.42 0 12.004c0 1.59 1.99 3.097 5.043 4.03-.704 3.113-.39 5.588.988 6.38.32.187.69.275 1.102.275 1.345 0 3.107-.96 4.888-2.624 1.78 1.654 3.542 2.603 4.887 2.603.41 0 .783-.09 1.106-.275 1.374-.792 1.683-3.263.973-6.365C22.02 15.096 24 13.59 24 12.004c0-1.59-1.99-3.097-5.043-4.032.704-3.11.39-5.587-.988-6.38-.318-.184-.688-.277-1.092-.278zm-.005 1.09v.006c.225 0 .406.044.558.127.666.382.955 1.835.73 3.704-.054.46-.142.945-.25 1.44-.96-.236-2.006-.417-3.107-.534-.66-.905-1.345-1.727-2.035-2.447 1.592-1.48 3.087-2.292 4.105-2.295zm-9.77.02c1.012 0 2.514.808 4.11 2.28-.686.72-1.37 1.537-2.02 2.442-1.107.117-2.154.298-3.113.538-.112-.49-.195-.964-.254-1.42-.23-1.868.054-3.32.714-3.707.19-.09.4-.127.563-.132zm4.882 3.05c.455.468.91.992 1.36 1.564-.44-.02-.89-.034-1.345-.034-.46 0-.915.01-1.36.034.44-.572.895-1.096 1.345-1.565zM12 8.1c.74 0 1.477.034 2.202.093.406.582.802 1.203 1.183 1.86.372.64.71 1.29 1.018 1.946-.308.655-.646 1.31-1.013 1.95-.38.66-.773 1.288-1.18 1.87-.728.063-1.466.098-2.21.098-.74 0-1.477-.035-2.202-.093-.406-.582-.802-1.204-1.183-1.86-.372-.64-.71-1.29-1.018-1.946.303-.657.646-1.313 1.013-1.954.38-.66.773-1.286 1.18-1.868.728-.064 1.466-.098 2.21-.098zm-3.635.254c-.24.377-.48.763-.704 1.16-.225.39-.435.782-.635 1.174-.265-.656-.49-1.31-.676-1.947.64-.15 1.315-.283 2.015-.386zm7.26 0c.695.103 1.365.23 2.006.387-.18.632-.405 1.282-.66 1.933-.2-.39-.41-.783-.64-1.174-.225-.392-.465-.774-.705-1.146zm3.063.675c.484.15.944.317 1.375.498 1.732.74 2.852 1.708 2.852 2.476-.005.768-1.125 1.74-2.857 2.475-.42.18-.88.342-1.355.493-.28-.958-.646-1.956-1.1-2.98.45-1.017.81-2.01 1.085-2.964zm-13.395.004c.278.96.645 1.957 1.1 2.98-.45 1.017-.812 2.01-1.086 2.964-.484-.15-.944-.318-1.37-.5-1.732-.737-2.852-1.706-2.852-2.474 0-.768 1.12-1.742 2.852-2.476.42-.18.88-.342 1.356-.494zm11.678 4.28c.265.657.49 1.312.676 1.948-.64.157-1.316.29-2.016.39.24-.375.48-.762.705-1.158.225-.39.435-.788.636-1.18zm-9.945.02c.2.392.41.783.64 1.175.23.39.465.772.705 1.143-.695-.102-1.365-.23-2.006-.386.18-.63.406-1.282.66-1.933zM17.92 16.32c.112.493.2.968.254 1.423.23 1.868-.054 3.32-.714 3.708-.147.09-.338.128-.563.128-1.012 0-2.514-.807-4.11-2.28.686-.72 1.37-1.536 2.02-2.44 1.107-.118 2.154-.3 3.113-.54zm-11.83.01c.96.234 2.006.415 3.107.532.66.905 1.345 1.727 2.035 2.446-1.595 1.483-3.092 2.295-4.11 2.295-.22-.005-.406-.05-.553-.132-.666-.38-.955-1.834-.73-3.703.054-.46.142-.944.25-1.438zm4.56.64c.44.02.89.034 1.345.034.46 0 .915-.01 1.36-.034-.44.572-.895 1.095-1.345 1.565-.455-.47-.91-.993-1.36-1.565z","expo":"M0 20.084c.043.53.23 1.063.718 1.778.58.849 1.576 1.315 2.303.567.49-.505 5.794-9.776 8.35-13.29a.761.761 0 011.248 0c2.556 3.514 7.86 12.785 8.35 13.29.727.748 1.723.282 2.303-.567.57-.835.728-1.42.728-2.046 0-.426-8.26-15.798-9.092-17.078-.8-1.23-1.044-1.498-2.397-1.542h-1.032c-1.353.044-1.597.311-2.398 1.542C8.267 3.991.33 18.758 0 19.77Z","typescript":"M1.125 0C.502 0 0 .502 0 1.125v21.75C0 23.498.502 24 1.125 24h21.75c.623 0 1.125-.502 1.125-1.125V1.125C24 .502 23.498 0 22.875 0zm17.363 9.75c.612 0 1.154.037 1.627.111a6.38 6.38 0 0 1 1.306.34v2.458a3.95 3.95 0 0 0-.643-.361 5.093 5.093 0 0 0-.717-.26 5.453 5.453 0 0 0-1.426-.2c-.3 0-.573.028-.819.086a2.1 2.1 0 0 0-.623.242c-.17.104-.3.229-.393.374a.888.888 0 0 0-.14.49c0 .196.053.373.156.529.104.156.252.304.443.444s.423.276.696.41c.273.135.582.274.926.416.47.197.892.407 1.266.628.374.222.695.473.963.753.268.279.472.598.614.957.142.359.214.776.214 1.253 0 .657-.125 1.21-.373 1.656a3.033 3.033 0 0 1-1.012 1.085 4.38 4.38 0 0 1-1.487.596c-.566.12-1.163.18-1.79.18a9.916 9.916 0 0 1-1.84-.164 5.544 5.544 0 0 1-1.512-.493v-2.63a5.033 5.033 0 0 0 3.237 1.2c.333 0 .624-.03.872-.09.249-.06.456-.144.623-.25.166-.108.29-.234.373-.38a1.023 1.023 0 0 0-.074-1.089 2.12 2.12 0 0 0-.537-.5 5.597 5.597 0 0 0-.807-.444 27.72 27.72 0 0 0-1.007-.436c-.918-.383-1.602-.852-2.053-1.405-.45-.553-.676-1.222-.676-2.005 0-.614.123-1.141.369-1.582.246-.441.58-.804 1.004-1.089a4.494 4.494 0 0 1 1.47-.629 7.536 7.536 0 0 1 1.77-.201zm-15.113.188h9.563v2.166H9.506v9.646H6.789v-9.646H3.375z","reactquery":"M6.9297 13.6875c.164-.0938.375-.0352.4687.1328l.0625.1055c.4805.8515.9805 1.6601 1.5 2.4258.6133.9023 1.3047 1.8164 2.0743 2.7421a.3455.3455 0 0 1-.0391.4844l-.0742.0664c-2.543 2.2227-4.1914 2.664-4.9532 1.332-.746-1.3046-.4765-3.6718.8086-7.1093a.3437.3437 0 0 1 .1524-.1797ZM17.75 16.3008c.1836-.0313.3594.086.3945.2695l.0196.1016c.6289 3.2851.1875 4.9297-1.3243 4.9297-1.4804 0-3.3593-1.4024-5.6484-4.2032a.3271.3271 0 0 1-.0742-.2226c0-.1875.1562-.3399.3437-.3399h.1211a32.9838 32.9838 0 0 0 2.8086-.0976c1.0703-.086 2.1914-.2305 3.3594-.4375zm.871-6.9766a.3528.3528 0 0 1 .4454-.211l.1016.0352c3.2617 1.1094 4.5039 2.332 3.7187 3.6641-.7656 1.3047-2.9922 2.254-6.6836 2.8477-.082.0117-.168-.004-.2383-.047-.168-.0976-.2265-.3085-.125-.4765l.0625-.1054c.504-.8438.957-1.6836 1.3672-2.5235.4766-.9883.9297-2.0508 1.3516-3.1836zM7.797 8.3398c.082-.0117.168.004.2383.047.168.0976.2265.3085.125.4765l-.0625.1054a34.0882 34.0882 0 0 0-1.3672 2.5235c-.4766.9883-.9297 2.0508-1.3516 3.1836a.3528.3528 0 0 1-.4453.211l-.1016-.0352c-3.2617-1.1094-4.5039-2.332-3.7187-3.6641.7656-1.3047 2.9922-2.254 6.6836-2.8477Zm5.2812-3.9843c2.543-2.2227 4.1914-2.664 4.9532-1.332.746 1.3046.4765 3.6718-.8086 7.1093a.3436.3436 0 0 1-.1524.1797c-.164.0938-.375.0352-.4687-.1328l-.0625-.1055c-.4805-.8515-.9805-1.6601-1.5-2.4258-.6133-.9023-1.3047-1.8164-2.0743-2.7421a.3455.3455 0 0 1 .0391-.4844Zm-5.793-2.082c1.4805 0 3.3633 1.4023 5.6485 4.203a.3488.3488 0 0 1 .0781.2188c-.0039.1914-.1562.3438-.3476.3438l-.1172-.004a34.5835 34.5835 0 0 0-2.8086.1016c-1.0742.086-2.1953.2305-3.3633.4375a.343.343 0 0 1-.3945-.2734l-.0196-.0977c-.629-3.2851-.1876-4.9297 1.3242-4.9297Zm2.8711 5.8124h3.6875a.638.638 0 0 1 .5508.3164l1.8477 3.2188a.6437.6437 0 0 1 0 .6289l-1.8477 3.2227a.638.638 0 0 1-.5507.3164h-3.6875c-.2266 0-.4375-.1211-.547-.3164L7.7579 12.25a.6437.6437 0 0 1 0-.629l1.8516-3.2187c.1093-.1953.3203-.3164.5468-.3164Zm3.2305.793a.638.638 0 0 1 .5508.3164l1.3906 2.4258a.6437.6437 0 0 1 0 .6289l-1.3906 2.4297a.638.638 0 0 1-.5508.3164h-2.7734c-.2266 0-.4375-.1211-.5469-.3164L8.672 12.25a.6437.6437 0 0 1 0-.629l1.3945-2.4257c.1094-.1953.3203-.3164.5469-.3164Zm-.4922.8672h-1.789c-.2266 0-.4336.1172-.547.3164l-.8983 1.5586a.6437.6437 0 0 0 0 .6289l.8984 1.5625a.6317.6317 0 0 0 .5469.3164h1.789a.6317.6317 0 0 0 .547-.3164l.8983-1.5625a.6437.6437 0 0 0 0-.629l-.8984-1.5585c-.1133-.1992-.3203-.3164-.5469-.3164Zm-.4765.8281c.2265 0 .4375.1211.5468.3164l.422.7305c.1132.1953.1132.4375 0 .6289l-.422.7344c-.1093.1953-.3203.3164-.5468.3164h-.836a.6317.6317 0 0 1-.5468-.3164l-.422-.7344c-.1132-.1914-.1132-.4336 0-.629l.422-.7304a.6317.6317 0 0 1 .5468-.3164zm-.418.8164a.548.548 0 0 0-.4727.2735c-.0976.168-.0976.375 0 .5468a.5444.5444 0 0 0 .4727.2696.5444.5444 0 0 0 .4727-.2696c.0976-.1718.0976-.3789 0-.5468A.548.548 0 0 0 12 11.3906Zm-4.4219.5469h.9805M18.9805 7.75c.3906-1.8945.4765-3.3438.2226-4.3984-.1484-.629-.4218-1.1368-.8398-1.5078-.4414-.3907-1-.582-1.625-.582-1.0352 0-2.1211.4726-3.2813 1.3671-.4726.3633-.9648.8047-1.4726 1.3164-.043-.0508-.086-.1015-.1367-.1445-1.4454-1.2852-2.6602-2.082-3.6993-2.3906-.6171-.1836-1.1953-.1993-1.7226-.0235-.5586.1875-1.004.5742-1.3164 1.1172-.5156.8945-.6524 2.0742-.461 3.5274.0782.5898.2149 1.2343.4024 1.9335a1.1187 1.1187 0 0 0-.2149.047C3.008 8.621 1.711 9.2694.9258 10.0155c-.4649.4414-.7695.9375-.8828 1.4805-.1133.5781 0 1.1562.3125 1.6992.5156.8945 1.4648 1.5977 2.8164 2.1563.543.2226 1.1562.4257 1.8437.6093a1.0227 1.0227 0 0 0-.0703.2266c-.3906 1.8906-.4765 3.3438-.2226 4.3945.1484.629.4257 1.1407.8398 1.5078.4414.3907 1 .582 1.625.582 1.0352 0 2.121-.4726 3.2813-1.3632.4765-.3711.9726-.8164 1.4882-1.336a1.2 1.2 0 0 0 .1953.2266c1.4454 1.2852 2.6602 2.082 3.6993 2.3906.6172.1836 1.1953.1993 1.7226.0235.5586-.1875 1.004-.5742 1.3164-1.1172.5157-.8945.6524-2.0742.461-3.5273-.082-.6133-.2227-1.2813-.4258-2.0118a1.2248 1.2248 0 0 0 .2383-.0468c1.828-.6094 3.125-1.2578 3.9101-2.004.4649-.4413.7696-.9374.8828-1.4804.1133-.5781 0-1.1563-.3125-1.6992-.5156-.8946-1.4648-1.5977-2.8164-2.1563-.5586-.2304-1.1953-.4414-1.9062-.625a.8647.8647 0 0 0 .0586-.1953z","android":"M18.4395 5.5586c-.675 1.1664-1.352 2.3318-2.0274 3.498-.0366-.0155-.0742-.0286-.1113-.043-1.8249-.6957-3.484-.8-4.42-.787-1.8551.0185-3.3544.4643-4.2597.8203-.084-.1494-1.7526-3.021-2.0215-3.4864a1.1451 1.1451 0 0 0-.1406-.1914c-.3312-.364-.9054-.4859-1.379-.203-.475.282-.7136.9361-.3886 1.5019 1.9466 3.3696-.0966-.2158 1.9473 3.3593.0172.031-.4946.2642-1.3926 1.0177C2.8987 12.176.452 14.772 0 18.9902h24c-.119-1.1108-.3686-2.099-.7461-3.0683-.7438-1.9118-1.8435-3.2928-2.7402-4.1836a12.1048 12.1048 0 0 0-2.1309-1.6875c.6594-1.122 1.312-2.2559 1.9649-3.3848.2077-.3615.1886-.7956-.0079-1.1191a1.1001 1.1001 0 0 0-.8515-.5332c-.5225-.0536-.9392.3128-1.0488.5449zm-.0391 8.461c.3944.5926.324 1.3306-.1563 1.6503-.4799.3197-1.188.0985-1.582-.4941-.3944-.5927-.324-1.3307.1563-1.6504.4727-.315 1.1812-.1086 1.582.4941zM7.207 13.5273c.4803.3197.5506 1.0577.1563 1.6504-.394.5926-1.1038.8138-1.584.4941-.48-.3197-.5503-1.0577-.1563-1.6504.4008-.6021 1.1087-.8106 1.584-.4941z","apple":"M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701","sqlite":"M21.678.521c-1.032-.92-2.28-.55-3.513.544a8.71 8.71 0 0 0-.547.535c-2.109 2.237-4.066 6.38-4.674 9.544.237.48.422 1.093.544 1.561a13.044 13.044 0 0 1 .164.703s-.019-.071-.096-.296l-.05-.146a1.689 1.689 0 0 0-.033-.08c-.138-.32-.518-.995-.686-1.289-.143.423-.27.818-.376 1.176.484.884.778 2.4.778 2.4s-.025-.099-.147-.442c-.107-.303-.644-1.244-.772-1.464-.217.804-.304 1.346-.226 1.478.152.256.296.698.422 1.186.286 1.1.485 2.44.485 2.44l.017.224a22.41 22.41 0 0 0 .056 2.748c.095 1.146.273 2.13.5 2.657l.155-.084c-.334-1.038-.47-2.399-.41-3.967.09-2.398.642-5.29 1.661-8.304 1.723-4.55 4.113-8.201 6.3-9.945-1.993 1.8-4.692 7.63-5.5 9.788-.904 2.416-1.545 4.684-1.931 6.857.666-2.037 2.821-2.912 2.821-2.912s1.057-1.304 2.292-3.166c-.74.169-1.955.458-2.362.629-.6.251-.762.337-.762.337s1.945-1.184 3.613-1.72C21.695 7.9 24.195 2.767 21.678.521m-18.573.543A1.842 1.842 0 0 0 1.27 2.9v16.608a1.84 1.84 0 0 0 1.835 1.834h9.418a22.953 22.953 0 0 1-.052-2.707c-.006-.062-.011-.141-.016-.2a27.01 27.01 0 0 0-.473-2.378c-.121-.47-.275-.898-.369-1.057-.116-.197-.098-.31-.097-.432 0-.12.015-.245.037-.386a9.98 9.98 0 0 1 .234-1.045l.217-.028c-.017-.035-.014-.065-.031-.097l-.041-.381a32.8 32.8 0 0 1 .382-1.194l.2-.019c-.008-.016-.01-.038-.018-.053l-.043-.316c.63-3.28 2.587-7.443 4.8-9.791.066-.069.133-.128.198-.194Z","html5":"M1.5 0h21l-1.91 21.563L11.977 24l-8.564-2.438L1.5 0zm7.031 9.75l-.232-2.718 10.059.003.23-2.622L5.412 4.41l.698 8.01h9.126l-.326 3.426-2.91.804-2.955-.81-.188-2.11H6.248l.33 4.171L12 19.351l5.379-1.443.744-8.157H8.531z","claude":"m4.7144 15.9555 4.7174-2.6471.079-.2307-.079-.1275h-.2307l-.7893-.0486-2.6956-.0729-2.3375-.0971-2.2646-.1214-.5707-.1215-.5343-.7042.0546-.3522.4797-.3218.686.0608 1.5179.1032 2.2767.1578 1.6514.0972 2.4468.255h.3886l.0546-.1579-.1336-.0971-.1032-.0972L6.973 9.8356l-2.55-1.6879-1.3356-.9714-.7225-.4918-.3643-.4614-.1578-1.0078.6557-.7225.8803.0607.2246.0607.8925.686 1.9064 1.4754 2.4893 1.8336.3643.3035.1457-.1032.0182-.0728-.164-.2733-1.3539-2.4467-1.445-2.4893-.6435-1.032-.17-.6194c-.0607-.255-.1032-.4674-.1032-.7285L6.287.1335 6.6997 0l.9957.1336.419.3642.6192 1.4147 1.0018 2.2282 1.5543 3.0296.4553.8985.2429.8318.091.255h.1579v-.1457l.1275-1.706.2368-2.0947.2307-2.6957.0789-.7589.3764-.9107.7468-.4918.5828.2793.4797.686-.0668.4433-.2853 1.8517-.5586 2.9021-.3643 1.9429h.2125l.2429-.2429.9835-1.3053 1.6514-2.0643.7286-.8196.85-.9046.5464-.4311h1.0321l.759 1.1293-.34 1.1657-1.0625 1.3478-.8804 1.1414-1.2628 1.7-.7893 1.36.0729.1093.1882-.0183 2.8535-.607 1.5421-.2794 1.8396-.3157.8318.3886.091.3946-.3278.8075-1.967.4857-2.3072.4614-3.4364.8136-.0425.0304.0486.0607 1.5482.1457.6618.0364h1.621l3.0175.2247.7892.522.4736.6376-.079.4857-1.2142.6193-1.6393-.3886-3.825-.9107-1.3113-.3279h-.1822v.1093l1.0929 1.0686 2.0035 1.8092 2.5075 2.3314.1275.5768-.3218.4554-.34-.0486-2.2039-1.6575-.85-.7468-1.9246-1.621h-.1275v.17l.4432.6496 2.3436 3.5214.1214 1.0807-.17.3521-.6071.2125-.6679-.1214-1.3721-1.9246L14.38 17.959l-1.1414-1.9428-.1397.079-.674 7.2552-.3156.3703-.7286.2793-.6071-.4614-.3218-.7468.3218-1.4753.3886-1.9246.3157-1.53.2853-1.9004.17-.6314-.0121-.0425-.1397.0182-1.4328 1.9672-2.1796 2.9446-1.7243 1.8456-.4128.164-.7164-.3704.0667-.6618.4008-.5889 2.386-3.0357 1.4389-1.882.929-1.0868-.0062-.1579h-.0546l-6.3385 4.1164-1.1293.1457-.4857-.4554.0608-.7467.2307-.2429 1.9064-1.3114Z"};
+const BRAND_HEX = { react: '#0A7EA4', expo: '#000020', typescript: '#3178C6', reactquery: '#FF4154', android: '#34A853', apple: '#000000', sqlite: '#003B57', html5: '#E34F26', claude: '#D97757' };
+const GEN = {
+  camera: '<path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13.5" r="3.5"/>',
+  ocr: '<path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><path d="M8 10h8M8 14h5"/>',
+  db: '<ellipse cx="12" cy="5.5" rx="7" ry="2.5"/><path d="M5 5.5v13c0 1.4 3.1 2.5 7 2.5s7-1.1 7-2.5v-13M5 12c0 1.4 3.1 2.5 7 2.5s7-1.1 7-2.5"/>',
+  cloud: '<path d="M7 18h10.5a4.5 4.5 0 0 0 .6-8.96A6 6 0 0 0 6.6 9.5 4.25 4.25 0 0 0 7 18z"/>',
+  globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/>',
+  screen: '<rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M10.5 18.5h3"/>',
+  tag: '<path d="M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9z"/><circle cx="7.5" cy="7.5" r="1.5"/>',
+  refresh: '<path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/>',
+  code: '<path d="M8 7l-5 5 5 5M16 7l5 5-5 5"/>',
+};
+const PAL = {
+  blue: ['#dae8fc', '#6c8ebf'], green: ['#d5e8d4', '#82b366'], yellow: ['#fff2cc', '#d6b656'], orange: ['#ffe6cc', '#d79b00'],
+  red: ['#f8cecc', '#b85450'], purple: ['#e1d5e7', '#9673a6'], gray: ['#f5f5f5', '#666666'], white: ['#ffffff', '#333333'],
+};
+const FONT = 'Helvetica, Arial, sans-serif';
+const INK = '#1A1A1A', SUB = '#555555', LINE = '#333333';
+let gid = 0;
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+function ic(name, x, y, s) {
+  if (BRAND[name]) return `<svg x="${x}" y="${y}" width="${s}" height="${s}" viewBox="0 0 24 24"><path d="${BRAND[name]}" fill="${BRAND_HEX[name]}"/></svg>`;
+  return `<svg x="${x}" y="${y}" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${GEN[name] || ''}</svg>`;
+}
+function txt(x, y, s, o = {}) {
+  return `<text x="${x}" y="${y}" font-size="${o.size || 12}" ${o.bold ? 'font-weight="700"' : ''} ${o.italic ? 'font-style="italic"' : ''} fill="${o.fill || INK}" text-anchor="${o.anchor || 'middle'}">${esc(s)}</text>`;
+}
+function svgShell(w, h, title, inner) {
+  const id = 'dg' + (++gid);
+  return { id, html: `<svg viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg" font-family="${FONT}" role="img" aria-label="${esc(title)}">
+    <defs>
+      <pattern id="${id}g" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M10 0H0V10" fill="none" stroke="#F1F1F1" stroke-width="1"/></pattern>
+      <pattern id="${id}G" width="50" height="50" patternUnits="userSpaceOnUse"><rect width="50" height="50" fill="url(#${id}g)"/><path d="M50 0H0V50" fill="none" stroke="#E4E4E4" stroke-width="1"/></pattern>
+      <marker id="${id}a" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0 1L10 5L0 9L3 5z" fill="${LINE}"/></marker>
+      <marker id="${id}o" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 1L10 5L0 9" fill="none" stroke="${LINE}" stroke-width="1.3"/></marker>
+    </defs>
+    <rect width="${w}" height="${h}" fill="#FFFFFF"/><rect width="${w}" height="${h}" fill="url(#${id}G)"/>
+    ${inner(id)}
+  </svg>` };
+}
+
+/* ---- Block diagrams: lanes (swimlanes), nodes, orthogonal edges ---- */
+function lane(c) {
+  const [f, s] = PAL[c.style || 'gray'];
+  const hh = 26;
+  let g = `<rect x="${c.x}" y="${c.y}" width="${c.w}" height="${c.h}" rx="4" fill="${c.fill || '#ffffff'}" fill-opacity="${c.fill ? 1 : .55}" stroke="${s}" ${c.dashed ? 'stroke-dasharray="6 4"' : ''}/>`;
+  g += `<path d="M${c.x} ${c.y + hh}V${c.y + 4}a4 4 0 0 1 4-4H${c.x + c.w - 4}a4 4 0 0 1 4 4V${c.y + hh}z" fill="${f}" stroke="${s}"/>`;
+  g += txt(c.x + 10, c.y + 17.5, c.title, { anchor: 'start', bold: true, size: 12 });
+  (c.icons || []).forEach((n, i) => { g += ic(n, c.x + c.w - 24 - i * 22, c.y + 4, 18); });
+  return g;
+}
+function node(n) {
+  const [f, s] = PAL[n.style || 'white'];
+  const { x, y, w, h } = n;
+  const dash = n.dashed ? 'stroke-dasharray="5 4"' : '';
+  let g = '';
+  if (n.shape === 'cylinder') {
+    const ry = 7;
+    g += `<path d="M${x} ${y + ry}a${w / 2} ${ry} 0 0 1 ${w} 0v${h - 2 * ry}a${w / 2} ${ry} 0 0 1 ${-w} 0z" fill="${f}" stroke="${s}" stroke-width="1.2" ${dash}/>`;
+    g += `<path d="M${x} ${y + ry}a${w / 2} ${ry} 0 0 0 ${w} 0" fill="none" stroke="${s}" stroke-width="1.2"/>`;
+  } else if (n.shape === 'actor') {
+    const cx = x + w / 2;
+    g += `<g fill="#ffffff" stroke="${LINE}" stroke-width="1.4"><circle cx="${cx}" cy="${y + 9}" r="8"/><path d="M${cx} ${y + 17}v22M${cx - 14} ${y + 25}h28M${cx} ${y + 39}l-11 17M${cx} ${y + 39}l11 17" fill="none"/></g>`;
+    g += txt(cx, y + h + 2, n.label, { bold: true, size: 12 });
+    return g;
+  } else {
+    g += `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${n.rx ?? 7}" fill="${f}" stroke="${s}" stroke-width="1.2" ${dash}/>`;
+  }
+  const icons = n.icons || [];
+  const ls = n.size || 12;
+  const yOff = n.shape === 'cylinder' ? 5 : 0;
+  if (n.layout === 'top') {
+    const s2 = n.is || 22, gap = 5, tw = icons.length * s2 + (icons.length - 1) * gap;
+    const iy = y + (n.iy ?? 9) + yOff;
+    icons.forEach((nm, i) => { g += ic(nm, x + w / 2 - tw / 2 + i * (s2 + gap), iy, s2); });
+    const ly = iy + (icons.length ? s2 + 15 : 14);
+    g += txt(x + w / 2, ly, n.label, { bold: true, size: ls });
+    if (n.sub) g += txt(x + w / 2, ly + 13.5, n.sub, { size: 10.5, fill: SUB });
+  } else if (icons.length) {
+    const s2 = n.is || 24, ix = x + 10, iy = y + h / 2 - s2 / 2 + yOff;
+    icons.forEach((nm, i) => { g += ic(nm, ix + i * (s2 + 4), iy, s2); });
+    const tx = ix + icons.length * (s2 + 4) + 4;
+    g += txt(tx, n.sub ? y + h / 2 - 2 + yOff : y + h / 2 + 4.5 + yOff, n.label, { anchor: 'start', bold: true, size: ls });
+    if (n.sub) g += txt(tx, y + h / 2 + 12 + yOff, n.sub, { anchor: 'start', size: 10.5, fill: SUB });
+  } else {
+    g += txt(x + w / 2, n.sub ? y + h / 2 - 2 + yOff : y + h / 2 + 4.5 + yOff, n.label, { bold: true, size: ls });
+    if (n.sub) g += txt(x + w / 2, y + h / 2 + 12 + yOff, n.sub, { size: 10.5, fill: SUB });
+  }
+  return g;
+}
+function anchor(n, side, at) {
+  if (side === 'l') return [n.x, at ?? n.y + n.h / 2];
+  if (side === 'r') return [n.x + n.w, at ?? n.y + n.h / 2];
+  if (side === 't') return [at ?? n.x + n.w / 2, n.y];
+  return [at ?? n.x + n.w / 2, n.y + n.h];
+}
+function edge(N, e, id) {
+  const A = N[e.from], B = N[e.to];
+  const a = anchor(A, e.fs, e.fa), b = anchor(B, e.ts, e.ta);
+  const H = s => s === 'l' || s === 'r';
+  let pts;
+  if (e.via) pts = [a, ...e.via, b];
+  else if (H(e.fs) && H(e.ts)) pts = a[1] === b[1] ? [a, b] : [a, [e.mid ?? (a[0] + b[0]) / 2, a[1]], [e.mid ?? (a[0] + b[0]) / 2, b[1]], b];
+  else if (!H(e.fs) && !H(e.ts)) pts = a[0] === b[0] ? [a, b] : [a, [a[0], e.mid ?? (a[1] + b[1]) / 2], [b[0], e.mid ?? (a[1] + b[1]) / 2], b];
+  else if (H(e.fs)) pts = [a, [b[0], a[1]], b];
+  else pts = [a, [a[0], b[1]], b];
+  const d = 'M' + pts.map(p => p.join(' ')).join('L');
+  let g = `<path d="${d}" fill="none" stroke="${LINE}" stroke-width="1.2" ${e.dashed ? 'stroke-dasharray="5 4"' : ''} marker-end="url(#${id}a)" ${e.both ? `marker-start="url(#${id}a)"` : ''}/>`;
+  if (e.label) {
+    let lx, ly;
+    {
+      let best = 0;
+      for (let i = 0; i < pts.length - 1; i++) {
+        const len = Math.hypot(pts[i + 1][0] - pts[i][0], pts[i + 1][1] - pts[i][1]);
+        if (len > best) { best = len; lx = (pts[i][0] + pts[i + 1][0]) / 2; ly = (pts[i][1] + pts[i + 1][1]) / 2; }
+      }
+    }
+    if (e.lx !== undefined) lx = e.lx;
+    if (e.ly !== undefined) ly = e.ly;
+    const tw = e.label.length * 5.6 + 8;
+    g += `<rect x="${lx - tw / 2}" y="${ly - 8}" width="${tw}" height="15" fill="#ffffff"/>` + txt(lx, ly + 3.5, e.label, { size: 10.5, fill: '#333' });
+  }
+  return g;
+}
+function block({ w, h, title, lanes = [], nodes = [], edges = [], notes = '' }) {
+  const N = {};
+  [...lanes, ...nodes].forEach(n => { if (n.id) N[n.id] = n; });
+  return svgShell(w, h, title, id => lanes.map(lane).join('') + edges.map(e => edge(N, e, id)).join('') + nodes.map(node).join('') + notes).html;
+}
+
+/* ---- Sequence diagram ---- */
+function sequence({ w, h, title, parts, msgs, frames }) {
+  const X = Object.fromEntries(parts.map(p => [p.id, p.x]));
+  return svgShell(w, h, title, id => {
+    let g = '';
+    parts.forEach(p => {
+      g += `<path d="M${p.x} ${p.actor ? 74 : 58}V${h - 14}" stroke="#888" stroke-width="1" stroke-dasharray="5 4"/>`;
+    });
+    frames.forEach(f => {
+      g += `<rect x="${f.x1}" y="${f.y1}" width="${f.x2 - f.x1}" height="${f.y2 - f.y1}" fill="${f.kind === 'alt' ? '#fff8e1' : '#f3f8ff'}" fill-opacity=".55" stroke="#555" stroke-width="1"/>`;
+      g += `<path d="M${f.x1} ${f.y1}h40v11l-7 7h-33z" fill="#ffffff" stroke="#555" stroke-width="1"/>` + txt(f.x1 + 17, f.y1 + 13, f.kind, { bold: true, size: 11 });
+      g += txt(f.x1 + 48, f.y1 + 13, f.cond, { anchor: 'start', size: 11, italic: true, fill: '#333' });
+      if (f.elseY) {
+        g += `<path d="M${f.x1} ${f.elseY}H${f.x2}" stroke="#555" stroke-dasharray="6 4"/>` + txt(f.x1 + 8, f.elseY + 14, f.elseCond, { anchor: 'start', size: 11, italic: true, fill: '#333' });
+      }
+    });
+    parts.forEach(p => {
+      if (p.actor) {
+        g += node({ shape: 'actor', x: p.x - 20, y: 6, w: 40, h: 56, label: p.label });
+      } else {
+        g += node({ x: p.x - 56, y: 16, w: 112, h: 40, style: p.style, label: p.label, sub: p.sub, icons: p.icon ? [p.icon] : [], is: 18, size: 11.5 });
+      }
+    });
+    msgs.forEach((m, i) => {
+      const x1 = X[m.from], x2 = X[m.to], dir = Math.sign(x2 - x1);
+      g += `<path d="M${x1 + dir * 3} ${m.y}H${x2 - dir * 3}" stroke="${LINE}" stroke-width="1.2" ${m.ret ? 'stroke-dasharray="5 4"' : ''} marker-end="url(#${id}${m.ret ? 'o' : 'a'})"/>`;
+      g += txt((x1 + x2) / 2, m.y - 6, `${i + 1}. ${m.label}`, { size: 10.5, fill: '#222' });
+    });
+    return g;
+  }).html;
+}
+
+/* ===================== Diagrams ===================== */
+const mount = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
+
+mount('d-context', block({
+  w: 960, h: 400, title: 'System context diagram',
+  lanes: [
+    { id: 'phone', x: 120, y: 30, w: 440, h: 345, title: "User's phone · iOS / Android", style: 'gray', icons: ['android', 'apple'] },
+    { id: 'ext', x: 600, y: 30, w: 340, h: 270, title: 'Internet · HTTPS', style: 'purple', dashed: true },
+  ],
+  nodes: [
+    { id: 'user', shape: 'actor', x: 34, y: 150, w: 40, h: 60, label: 'Collector' },
+    { id: 'app', x: 145, y: 72, w: 390, h: 74, style: 'blue', icons: ['expo', 'react', 'typescript'], is: 26, label: 'PokeWorth app', sub: 'Expo SDK 58 · React Native 0.88 · TypeScript', size: 13 },
+    { id: 'cam', x: 145, y: 196, w: 170, h: 58, style: 'yellow', icons: ['camera'], label: 'Camera', sub: 'expo-camera' },
+    { id: 'ocr', x: 365, y: 196, w: 170, h: 58, style: 'yellow', icons: ['ocr'], label: 'On-device OCR', sub: 'expo-text-extractor' },
+    { id: 'store', shape: 'cylinder', x: 245, y: 292, w: 190, h: 64, style: 'yellow', icons: ['db'], label: 'AsyncStorage', sub: 'recent scans · collection' },
+    { id: 'tcg', x: 640, y: 76, w: 260, h: 74, style: 'purple', icons: ['cloud'], is: 28, label: 'TCGdex REST API', sub: 'api.tcgdex.net/v2/en · cards, sets, images', size: 13 },
+    { id: 'tp', x: 630, y: 214, w: 130, h: 52, style: 'gray', icons: ['tag'], is: 20, label: 'TCGplayer', sub: 'USD prices' },
+    { id: 'cm', x: 780, y: 214, w: 130, h: 52, style: 'gray', icons: ['tag'], is: 20, label: 'Cardmarket', sub: 'EUR prices' },
+    { id: 'eas', x: 640, y: 318, w: 260, h: 58, style: 'orange', icons: ['expo'], label: 'EAS Build · EAS Update', sub: 'store binaries and OTA updates' },
+  ],
+  edges: [
+    { from: 'user', to: 'app', fs: 'r', ts: 'l', fa: 180, mid: 100, label: 'scan · search', lx: 100, ly: 150 },
+    { from: 'app', to: 'cam', fs: 'b', ts: 't', fa: 230 },
+    { from: 'cam', to: 'ocr', fs: 'r', ts: 'l', label: 'photo' },
+    { from: 'app', to: 'ocr', fs: 'b', ts: 't', fa: 450 },
+    { from: 'app', to: 'store', fs: 'b', ts: 't', fa: 340, both: true, label: 'read · write', lx: 340, ly: 274 },
+    { from: 'app', to: 'tcg', fs: 'r', ts: 'l', label: 'HTTPS JSON', lx: 587, ly: 92 },
+    { from: 'tp', to: 'tcg', fs: 't', ts: 'b', ta: 720, dashed: true, label: 'prices', lx: 720, ly: 182 },
+    { from: 'cm', to: 'tcg', fs: 't', ts: 'b', ta: 820, dashed: true },
+    { from: 'eas', to: 'phone', fs: 'l', ts: 'r', ta: 347, dashed: true, label: 'build · OTA', lx: 600, ly: 347 },
+  ],
+}));
+
+const C = [76, 216, 356, 496, 636].map(c => c - 62); // column x (node width 124)
+mount('d-components', block({
+  w: 980, h: 520, title: 'Component architecture diagram',
+  lanes: [
+    { id: 'L1', x: 8, y: 10, w: 704, h: 110, title: 'Screens · Expo Router (src/app)', style: 'blue', icons: ['expo'] },
+    { id: 'L2', x: 8, y: 150, w: 704, h: 90, title: 'State · TanStack Query hooks (src/hooks)', style: 'purple', icons: ['reactquery'] },
+    { id: 'L3', x: 8, y: 270, w: 704, h: 100, title: 'Services (src/services, src/utils)', style: 'green', icons: ['typescript'] },
+    { id: 'L4', x: 8, y: 400, w: 704, h: 110, title: 'Native modules · platform', style: 'yellow', icons: ['apple', 'android', 'react'] },
+    { id: 'X', x: 728, y: 10, w: 244, h: 500, title: 'External services', style: 'purple', dashed: true },
+  ],
+  nodes: [
+    { id: 'home', x: C[0], y: 42, w: 124, h: 66, style: 'blue', layout: 'top', icons: ['screen'], is: 18, label: 'Home', sub: 'index.tsx' },
+    { id: 'scan', x: C[1], y: 42, w: 124, h: 66, style: 'blue', layout: 'top', icons: ['screen'], is: 18, label: 'Scan', sub: 'scan.tsx' },
+    { id: 'conf', x: C[2], y: 42, w: 124, h: 66, style: 'blue', layout: 'top', icons: ['screen'], is: 18, label: 'Confirm', sub: 'confirm.tsx' },
+    { id: 'res', x: C[3], y: 42, w: 124, h: 66, style: 'blue', layout: 'top', icons: ['screen'], is: 18, label: 'Result', sub: 'result.tsx' },
+    { id: 'tabs', x: C[4], y: 42, w: 124, h: 66, style: 'white', dashed: true, layout: 'top', icons: ['screen'], is: 18, label: 'Search · Collection', size: 11, sub: 'planned tabs' },
+    { id: 'hRecent', x: C[0], y: 184, w: 124, h: 44, style: 'purple', label: 'useRecentScans', size: 11.5 },
+    { id: 'hMatch', x: C[2], y: 184, w: 124, h: 44, style: 'purple', label: 'useCardMatch', size: 11.5 },
+    { id: 'hCard', x: C[3], y: 184, w: 124, h: 44, style: 'purple', label: 'useCard', size: 11.5 },
+    { id: 'hSearch', x: C[4], y: 184, w: 124, h: 44, style: 'purple', label: 'useCardSearch', size: 11.5 },
+    { id: 'sStore', x: C[0], y: 304, w: 124, h: 52, style: 'green', label: 'storage.service', sub: 'history I/O', size: 11.5 },
+    { id: 'sOcr', x: C[1], y: 304, w: 124, h: 52, style: 'green', label: 'ocr.service', sub: 'lazy native load', size: 11.5 },
+    { id: 'sMatch', x: C[2], y: 304, w: 124, h: 52, style: 'green', label: 'card-matcher', sub: 'parse · rank', size: 11.5 },
+    { id: 'sTcg', x: C[3], y: 304, w: 124, h: 52, style: 'green', label: 'tcgdex.service', sub: 'REST · prices', size: 11.5 },
+    { id: 'sText', x: C[4], y: 304, w: 124, h: 52, style: 'gray', label: 'utils/text', sub: 'normalize · similarity', size: 11.5 },
+    { id: 'nStore', shape: 'cylinder', x: C[0], y: 432, w: 124, h: 66, style: 'yellow', layout: 'top', icons: ['db'], is: 18, iy: 10, label: 'AsyncStorage', size: 11.5, sub: 'key-value' },
+    { id: 'nText', x: C[1], y: 434, w: 124, h: 64, style: 'yellow', layout: 'top', icons: ['ocr', 'expo'], is: 18, label: 'Text extractor', size: 11.5, sub: 'expo-text-extractor' },
+    { id: 'nCam', x: C[2], y: 434, w: 124, h: 64, style: 'yellow', layout: 'top', icons: ['camera', 'expo'], is: 18, label: 'Camera', size: 11.5, sub: 'expo-camera · CameraView' },
+    { id: 'nFetch', x: C[3], y: 434, w: 124, h: 64, style: 'yellow', layout: 'top', icons: ['globe'], is: 18, label: 'fetch', size: 11.5, sub: 'HTTPS client' },
+    { id: 'tcg', x: 748, y: 270, w: 204, h: 74, style: 'purple', icons: ['cloud'], is: 28, label: 'TCGdex REST API', sub: 'cards · sets · images', size: 12.5 },
+    { id: 'tp', x: 748, y: 400, w: 96, h: 46, style: 'gray', label: 'TCGplayer', sub: 'USD', size: 11.5 },
+    { id: 'cm', x: 856, y: 400, w: 96, h: 46, style: 'gray', label: 'Cardmarket', sub: 'EUR', size: 11.5 },
+  ],
+  edges: [
+    { from: 'home', to: 'scan', fs: 'r', ts: 'l' },
+    { from: 'scan', to: 'conf', fs: 'r', ts: 'l' },
+    { from: 'conf', to: 'res', fs: 'r', ts: 'l' },
+    { from: 'home', to: 'hRecent', fs: 'b', ts: 't' },
+    { from: 'hRecent', to: 'sStore', fs: 'b', ts: 't', fa: 60, ta: 60 },
+    { from: 'sStore', to: 'nStore', fs: 'b', ts: 't' },
+    { from: 'scan', to: 'sOcr', fs: 'b', ts: 't', label: 'recognizeCardText', ly: 258 },
+    { from: 'sOcr', to: 'nText', fs: 'b', ts: 't' },
+    { from: 'scan', to: 'nCam', fs: 'b', ts: 't', fa: 268, via: [[268, 130], [286, 130], [286, 386], [320, 386]], ta: 320 },
+    { from: 'conf', to: 'hMatch', fs: 'b', ts: 't' },
+    { from: 'hMatch', to: 'sMatch', fs: 'b', ts: 't' },
+    { from: 'sMatch', to: 'sTcg', fs: 'r', ts: 'l' },
+    { from: 'sMatch', to: 'sText', fs: 'b', ts: 'b', fa: 396, via: [[396, 386], [636, 386]], ta: 636, dashed: true, label: 'uses', lx: 520, ly: 386 },
+    { from: 'res', to: 'hCard', fs: 'b', ts: 't' },
+    { from: 'hCard', to: 'sTcg', fs: 'b', ts: 't' },
+    { from: 'res', to: 'sStore', fs: 'b', ts: 't', fa: 450, via: [[450, 142], [146, 142], [146, 257], [114, 257]], ta: 114, label: 'addRecentScan', lx: 222, ly: 142 },
+    { from: 'tabs', to: 'hSearch', fs: 'b', ts: 't', dashed: true },
+    { from: 'hSearch', to: 'sTcg', fs: 'b', ts: 't', ta: 530, mid: 256, dashed: true },
+    { from: 'sTcg', to: 'nFetch', fs: 'b', ts: 't' },
+    { from: 'nFetch', to: 'tcg', fs: 'r', ts: 'l', mid: 720, label: 'GET /cards', lx: 660, ly: 466 },
+    { from: 'tp', to: 'tcg', fs: 't', ts: 'b', dashed: true, ta: 796 },
+    { from: 'cm', to: 'tcg', fs: 't', ts: 'b', dashed: true, ta: 904 },
+  ],
+}));
+
+mount('d-sequence', sequence({
+  w: 980, h: 670, title: 'Scan to price sequence diagram',
+  parts: [
+    { id: 'u', x: 56, label: 'Collector', actor: true },
+    { id: 'scan', x: 176, label: 'Scan', style: 'blue', icon: 'screen' },
+    { id: 'ocr', x: 296, label: 'ocr.service', style: 'green' },
+    { id: 'conf', x: 416, label: 'Confirm', style: 'blue', icon: 'screen' },
+    { id: 'match', x: 536, label: 'card-matcher', style: 'green' },
+    { id: 'tcg', x: 664, label: 'TCGdex API', style: 'purple', icon: 'cloud' },
+    { id: 'res', x: 790, label: 'Result', style: 'blue', icon: 'screen' },
+    { id: 'store', x: 912, label: 'storage.service', style: 'green' },
+  ],
+  frames: [
+    { kind: 'opt', cond: '[set size was read]', x1: 486, y1: 296, x2: 724, y2: 380 },
+    { kind: 'alt', cond: '[confident match]', x1: 14, y1: 428, x2: 850, y2: 538, elseY: 480, elseCond: '[ambiguous: user picks]' },
+  ],
+  msgs: [
+    { from: 'u', to: 'scan', y: 100, label: 'tap Scan · capture' },
+    { from: 'scan', to: 'ocr', y: 136, label: 'recognizeCardText()' },
+    { from: 'ocr', to: 'scan', y: 168, label: 'text lines', ret: true },
+    { from: 'scan', to: 'conf', y: 204, label: 'parseOcrLines → /confirm' },
+    { from: 'conf', to: 'match', y: 240, label: 'matchCard(parsed)' },
+    { from: 'match', to: 'tcg', y: 272, label: 'GET /cards?name=' },
+    { from: 'tcg', to: 'match', y: 290, label: 'CardBrief[]', ret: true },
+    { from: 'match', to: 'tcg', y: 336, label: 'GET /cards/{id}' },
+    { from: 'tcg', to: 'match', y: 368, label: 'set.cardCount', ret: true },
+    { from: 'match', to: 'conf', y: 408, label: 'ranked candidates', ret: true },
+    { from: 'conf', to: 'res', y: 462, label: 'replace /result (auto)' },
+    { from: 'u', to: 'conf', y: 506, label: 'pick the right print' },
+    { from: 'conf', to: 'res', y: 528, label: 'replace /result?id' },
+    { from: 'res', to: 'tcg', y: 572, label: 'GET /cards/{id}' },
+    { from: 'tcg', to: 'res', y: 600, label: 'card + pricing', ret: true },
+    { from: 'res', to: 'store', y: 626, label: 'addRecentScan()' },
+    { from: 'res', to: 'u', y: 654, label: 'price · source · currency · date', ret: true },
+  ],
+}));
+
+const T = (id, x, y, icons, label, sub, o = {}) => Object.assign({ id, x, y, w: 100, h: 82, style: 'white', layout: 'top', icons, is: 28, iy: 10, label, sub, size: 11.5 }, o);
+mount('d-stack', block({
+  w: 980, h: 300, title: 'Technology stack map',
+  lanes: [
+    { x: 8, y: 10, w: 236, h: 135, title: 'Platforms', style: 'gray' },
+    { x: 254, y: 10, w: 348, h: 135, title: 'App framework', style: 'blue' },
+    { x: 612, y: 10, w: 360, h: 135, title: 'Navigation · state · storage', style: 'purple' },
+    { x: 8, y: 155, w: 236, h: 135, title: 'Device capabilities', style: 'yellow' },
+    { x: 254, y: 155, w: 236, h: 135, title: 'Card data', style: 'green' },
+    { x: 500, y: 155, w: 236, h: 135, title: 'Build and ship', style: 'orange' },
+    { x: 746, y: 155, w: 226, h: 135, title: 'Later · prototype', style: 'gray', dashed: true },
+  ],
+  nodes: [
+    T('ios', 20, 48, ['apple'], 'iOS', 'App Store'),
+    T('and', 132, 48, ['android'], 'Android', 'Google Play'),
+    T('expo', 266, 48, ['expo'], 'Expo', 'SDK 58'),
+    T('rn', 378, 48, ['react'], 'React Native', '0.88 · React 19'),
+    T('ts', 490, 48, ['typescript'], 'TypeScript', 'strict types'),
+    T('router', 624, 48, ['expo'], 'Expo Router', 'file routes'),
+    T('rq', 742, 48, ['reactquery'], 'TanStack Query', 'cache · retries', { size: 11 }),
+    T('as', 860, 48, ['db'], 'AsyncStorage', 'local history'),
+    T('cam', 20, 193, ['camera'], 'expo-camera', 'capture'),
+    T('ocr', 132, 193, ['ocr'], 'Text extractor', 'on-device OCR', { size: 11 }),
+    T('tcg', 266, 193, ['cloud'], 'TCGdex API', 'cards · images'),
+    T('px', 378, 193, ['tag'], 'Price feeds', 'TCGplayer · CM'),
+    T('eas', 512, 193, ['expo'], 'EAS Build', 'dev + store builds'),
+    T('upd', 624, 193, ['refresh'], 'EAS Update', 'OTA JS updates'),
+    T('sql', 754, 193, ['sqlite'], 'SQLite', 'if collection grows', { dashed: true, w: 98 }),
+    T('web', 862, 193, ['html5', 'claude'], 'Web prototype', 'demo only', { dashed: true, w: 100, is: 24 }),
+  ],
+}));
+</script>
+</body>
+</html>

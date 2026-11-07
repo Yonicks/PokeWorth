@@ -51,28 +51,36 @@ export default function HomeScreen() {
   );
 
   return (
-    <View style={styles.container}>
-      <Pressable style={styles.scanButton} onPress={() => router.push('/scan')}>
-        <Text style={styles.scanButtonText}>📷  Scan Card</Text>
-      </Pressable>
-
-      <View style={styles.searchRow}>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Or search a card by name…"
-          value={search}
-          onChangeText={setSearch}
-          onSubmitEditing={submitSearch}
-          returnKeyType="search"
-          autoCapitalize="words"
-        />
-        <Pressable style={styles.searchButton} onPress={submitSearch}>
-          <Text style={styles.searchButtonText}>Search</Text>
-        </Pressable>
-      </View>
-
-      <Text style={styles.sectionTitle}>Recent scans</Text>
+    <View style={styles.flex}>
       <FlatList
+        // The iOS header floats over content; "automatic" insets the list below it.
+        contentInsetAdjustmentBehavior="automatic"
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+        ListHeaderComponent={
+          <View style={styles.headerBlock}>
+            <Pressable style={styles.scanButton} onPress={() => router.push('/scan')}>
+              <Text style={styles.scanButtonText}>📷  Scan Card</Text>
+            </Pressable>
+
+            <View style={styles.searchRow}>
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Or search a card by name…"
+                value={search}
+                onChangeText={setSearch}
+                onSubmitEditing={submitSearch}
+                returnKeyType="search"
+                autoCapitalize="words"
+              />
+              <Pressable style={styles.searchButton} onPress={submitSearch}>
+                <Text style={styles.searchButtonText}>Search</Text>
+              </Pressable>
+            </View>
+
+            <Text style={styles.sectionTitle}>Recent scans</Text>
+          </View>
+        }
         data={recentScans.data ?? []}
         keyExtractor={(item) => item.cardId}
         renderItem={renderScan}
@@ -87,7 +95,9 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, gap: 12 },
+  flex: { flex: 1 },
+  container: { padding: 16 },
+  headerBlock: { gap: 12, marginBottom: 4 },
   scanButton: {
     backgroundColor: '#208AEF',
     borderRadius: 14,

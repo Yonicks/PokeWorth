@@ -21,6 +21,7 @@ export default function RootLayout() {
         <Stack>
           <Stack.Screen name="index" options={{ title: 'PokeWorth' }} />
           <Stack.Screen name="scan" options={{ title: 'Scan Card', headerShown: false }} />
+          <Stack.Screen name="manual-entry" options={{ title: 'Enter Card Details' }} />
           <Stack.Screen name="confirm" options={{ title: 'Confirm Card' }} />
           <Stack.Screen name="result" options={{ title: 'Card Details' }} />
         </Stack>

@@ -54,7 +54,10 @@ export default function ResultScreen() {
     .map(([k]) => k);
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      contentInsetAdjustmentBehavior="automatic">
       {data.image && (
         <Image
           source={{ uri: cardImageUrl(data.image, 'high') }}

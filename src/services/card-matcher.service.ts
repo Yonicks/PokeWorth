@@ -8,8 +8,15 @@ import type { Card, CardBrief, ParsedCardText, ScoredCandidate } from '../types/
 import { normalize, similarity } from '../utils/text';
 import { searchCardsByName, getCard } from './tcgdex.service';
 
-/** Collector number like "4/102", "TG12/TG30", "SWSH284" (promo, no slash). */
+/** Collector number with a set total, e.g. "4/102" or "TG12/TG30". */
 const COLLECTOR_NUMBER_RE = /\b([A-Z]{0,4}\d{1,3}[a-z]?)\s*\/\s*([A-Z]{0,4}\d{1,3})\b/;
+
+/**
+ * Promo number printed without a slash, e.g. "SWSH284", "SM60", "SVP 085".
+ * Restricted to known promo prefixes so plain numbers (damage, "HP 120")
+ * are never mistaken for a collector number. Longer prefixes come first.
+ */
+const PROMO_NUMBER_RE = /\b(SWSH|HGSS|SVP|SV|SM|XY|BW|DP)\s?(\d{1,3})\b/i;
 
 /** Lines that are card chrome, not the card's name. */
 const NAME_STOPWORDS = new Set([
@@ -34,18 +41,64 @@ function looksLikeName(line: string): boolean {
   return true;
 }
 
+/** Promo-style number typed on its own, e.g. "SWSH284", "25" or "TG12". */
+const STANDALONE_NUMBER_RE = /^([A-Z]{0,5}\d{1,3}[a-z]?)$/i;
+
+export interface CollectorNumber {
+  localId: string;
+  setTotal?: number;
+}
+
+/** Find a "number/total" collector number inside one OCR line. */
+function matchCollectorNumber(line: string): CollectorNumber | null {
+  const m = COLLECTOR_NUMBER_RE.exec(line);
+  if (!m) return null;
+  const total = parseInt(m[2].replace(/\D/g, ''), 10);
+  return { localId: m[1], setTotal: Number.isNaN(total) ? undefined : total };
+}
+
+/**
+ * Parse a collector number the user typed: "4/102", "TG12/TG30" or a
+ * promo number without a slash ("SWSH284"). Returns null when it does
+ * not look like a collector number.
+ */
+export function parseCollectorNumber(input: string): CollectorNumber | null {
+  const text = input.trim();
+  if (!text) return null;
+  // Try as typed first (keeps a lowercase variant suffix like "4a"), then
+  // uppercased so "tg12/tg30" is accepted too.
+  const withSlash = matchCollectorNumber(text) ?? matchCollectorNumber(text.toUpperCase());
+  if (withSlash) return withSlash;
+  if (text.includes('/')) return null;
+  const standalone = STANDALONE_NUMBER_RE.exec(text);
+  return standalone ? { localId: standalone[1].toUpperCase() } : null;
+}
+
+/** Find a slashless promo number ("SWSH284", "SVP 085") inside one OCR line. */
+function matchPromoNumber(line: string): CollectorNumber | null {
+  const m = PROMO_NUMBER_RE.exec(line);
+  return m ? { localId: `${m[1].toUpperCase()}${m[2]}` } : null;
+}
+
 /** Extract name + collector number from raw OCR lines. */
 export function parseOcrLines(rawLines: string[]): ParsedCardText {
   const result: ParsedCardText = { rawLines };
 
+  // Prefer a "number/total" anywhere on the card; fall back to a promo number.
+  let number: CollectorNumber | null = null;
   for (const line of rawLines) {
-    const m = COLLECTOR_NUMBER_RE.exec(line);
-    if (m) {
-      result.localId = m[1];
-      const total = parseInt(m[2].replace(/\D/g, ''), 10);
-      if (!Number.isNaN(total)) result.setTotal = total;
-      break;
+    number = matchCollectorNumber(line);
+    if (number) break;
+  }
+  if (!number) {
+    for (const line of rawLines) {
+      number = matchPromoNumber(line);
+      if (number) break;
     }
+  }
+  if (number) {
+    result.localId = number.localId;
+    if (number.setTotal !== undefined) result.setTotal = number.setTotal;
   }
 
   // Card names are printed near the top, so take the first plausible line.

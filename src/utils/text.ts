@@ -1,8 +1,9 @@
 /** Text normalization and fuzzy comparison helpers for OCR matching. */
 
 /** Lowercase, strip accents/punctuation, collapse whitespace. */
-export function normalize(input: string): string {
-  return input
+export function normalize(input: string | undefined | null): string {
+  // Catalog records can lack a name or number; that crashed a binder pocket on iOS.
+  return (input ?? '')
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()

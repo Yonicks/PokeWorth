@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ScanModeSwitch } from '@/components/scan-mode-switch';
 import { setBinderCapture } from '@/services/binder-capture';
+import { pickPictureSize } from '@/services/camera-size';
 import {
   ENABLED_LAYOUTS,
   guideFrame,
@@ -38,6 +39,8 @@ export default function BinderScanScreen() {
   const [layout, setLayout] = useState<BinderLayout>('3x3');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string>();
+  // The largest still-photo size; set once the camera is ready (see camera-size.ts).
+  const [pictureSize, setPictureSize] = useState<string>();
   const insets = useSafeAreaInsets();
   const { width: screenW, height: screenH } = useWindowDimensions();
   const busyRef = useRef(false);
@@ -86,8 +89,10 @@ export default function BinderScanScreen() {
 
   const capture = () =>
     run(async () => {
-      const photo = await cameraRef.current?.takePictureAsync({ quality: 0.9 });
+      // quality 1 and no extra processing: every pixel counts for the small collector number.
+      const photo = await cameraRef.current?.takePictureAsync({ quality: 1 });
       if (!photo?.uri) throw new Error('No photo captured');
+      if (__DEV__) console.warn(`Binder photo ${photo.width}×${photo.height}, size ${pictureSize ?? 'default'}`);
       // Map the on-screen guide to the photo, which the preview crops to fill the screen.
       const frame =
         photo.width && photo.height
@@ -169,7 +174,22 @@ export default function BinderScanScreen() {
   const shade = 'rgba(0,0,0,0.55)';
   return (
     <View style={styles.container}>
-      <CameraView ref={cameraRef} style={StyleSheet.absoluteFill} facing="back" />
+      <CameraView
+        ref={cameraRef}
+        style={StyleSheet.absoluteFill}
+        facing="back"
+        pictureSize={pictureSize}
+        onCameraReady={() => {
+          cameraRef.current
+            ?.getAvailablePictureSizesAsync()
+            .then((sizes) => {
+              const best = pickPictureSize(sizes);
+              if (__DEV__) console.warn(`Camera sizes ${JSON.stringify(sizes)} → ${best}`);
+              setPictureSize(best);
+            })
+            .catch(() => undefined);
+        }}
+      />
 
       {/* Dim everything outside the page guide. */}
       <View pointerEvents="none" style={StyleSheet.absoluteFill}>

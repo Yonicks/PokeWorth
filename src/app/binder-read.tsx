@@ -231,6 +231,12 @@ export default function BinderReadScreen() {
         <View style={styles.progress}>
           <View style={[styles.progressFill, { width: `${(done / total) * 100}%` }]} />
         </View>
+        {__DEV__ && pockets.length > 0 ? (
+          <Text style={styles.debug}>
+            DEBUG pocket {pockets[0].width}×{pockets[0].height} px, frame{' '}
+            {capture.frame === 'full' ? 'whole photo' : `${capture.frame.width}×${capture.frame.height} at ${capture.frame.originX},${capture.frame.originY}`}
+          </Text>
+        ) : null}
         {reviewing ? (
           <Text style={styles.summary}>
             {[
@@ -326,6 +332,7 @@ const styles = StyleSheet.create({
   progress: { height: 6, borderRadius: 3, backgroundColor: colors.raised, overflow: 'hidden' },
   progressFill: { height: '100%', backgroundColor: colors.gold400 },
   summary: { ...type.cardMeta, color: colors.textSecondary },
+  debug: { fontFamily: 'Courier', fontSize: 11, color: '#f6b35b' },
   grid: { flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -4 },
   tile: { padding: 6, gap: 3, borderRadius: radius.card, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, minHeight: 190 },
   tileReading: { borderColor: colors.gold400 },

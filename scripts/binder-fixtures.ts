@@ -14,6 +14,8 @@ import {
   previewRectToPhoto,
   type Rect,
 } from '../src/services/binder-grid.model';
+import { pickPictureSize } from '../src/services/camera-size';
+import { normalize } from '../src/utils/text';
 import {
   addLines,
   canAdd,
@@ -106,6 +108,14 @@ check('a 3×3 pocket from a 12 MP photo is big enough to read (≥ 900 px wide)'
   p9[0].width >= 900, String(p9[0].width));
 check('labels read row then pocket', pocketLabel(p9[5]) === 'Row 2, pocket 3');
 check('layout table matches pocket counts', LAYOUTS['3x3'].cols * LAYOUTS['3x3'].rows === 9 && LAYOUTS['2x2'].label === '4 pockets');
+
+// ── Phone test fixes: camera size and missing catalog names ─────────────────
+
+check('iOS: the full-resolution "Photo" preset is chosen', pickPictureSize(['Medium', 'High', 'Photo', 'Low']) === 'Photo');
+check('Android: the largest WxH wins', pickPictureSize(['640x480', '4000x3000', '1920x1080']) === '4000x3000');
+check('unknown size lists leave the default alone', pickPictureSize(['Foo']) === undefined && pickPictureSize([]) === undefined && pickPictureSize(undefined) === undefined);
+check('a catalog record without a name no longer crashes the matcher',
+  normalize(undefined) === '' && normalize(null) === '' && resembles('Pikachu', [{ name: undefined as unknown as string }]) === false);
 
 // ── Steps 4 and 5: review grid and adding many ──────────────────────────────
 

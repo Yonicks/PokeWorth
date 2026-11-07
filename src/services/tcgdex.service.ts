@@ -47,8 +47,9 @@ export async function getCardInSet(setId: string, localId: string): Promise<Card
   });
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`TCGdex request failed (${res.status}) for set ${setId} #${number}`);
-  const c = (await res.json()) as CardBrief;
-  return { id: c.id, localId: c.localId, name: c.name, image: c.image };
+  const c = (await res.json()) as Partial<CardBrief>;
+  if (!c.id || !c.name) return null;
+  return { id: c.id, localId: c.localId ?? number, name: c.name, image: c.image };
 }
 
 /** Fetch the full card record, including set, variants, and pricing. */

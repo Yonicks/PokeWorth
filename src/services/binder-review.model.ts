@@ -18,6 +18,8 @@ export interface ReviewPocket {
   col: number;
   uri: string;
   status: PocketStatus;
+  /** OCR text of the pocket (shown in the sheet in development builds). */
+  lines: string[];
   /** Best guesses from the matcher, most likely first (at most 5). */
   candidates: CardBrief[];
   /** The card the user (or the matcher) picked for this pocket. */
@@ -41,6 +43,7 @@ export function initReview(results: (PocketResult | undefined)[]): ReviewPocket[
         col: r.col,
         uri: r.uri,
         status: r.status,
+        lines: r.lines,
         candidates,
         cardId: hasCard ? candidates[0].id : undefined,
         ticked: hasCard && startsTicked(r.status),

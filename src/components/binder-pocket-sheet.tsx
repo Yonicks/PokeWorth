@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { OcrDebugPanel } from '@/components/ocr-debug-panel';
 import { useCard, useCardSearch } from '@/hooks/use-cards';
 import { pocketLabel } from '@/services/binder-grid.model';
 import { canAdd, type ReviewPocket } from '@/services/binder-review.model';
@@ -67,6 +68,7 @@ export function PocketSheet({
               {pocketLabel(pocket)}
             </Text>
             <Image source={{ uri: pocket.uri }} style={styles.photo} contentFit="contain" />
+            {__DEV__ ? <OcrDebugPanel rawLines={pocket.lines} /> : null}
 
             {pocket.candidates.length > 0 ? (
               <>

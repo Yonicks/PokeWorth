@@ -28,8 +28,12 @@ import {
   totals,
   type CollectionEntry,
 } from '@/services/collection.model';
+import { updateHistory, withCard } from '@/services/history.service';
 import { refreshPortfolioPrices } from '@/services/portfolio-refresh';
-import { formatMoney, formatTotals } from '@/services/printings.service';
+import { TotalValue } from '@/components/total-value';
+import { HISTORY_KEY, useFxRate } from '@/hooks/use-history';
+import { sortValue } from '@/services/currency.model';
+import { formatMoney } from '@/services/printings.service';
 import { cardImageUrl } from '@/services/tcgdex.service';
 import { normalize } from '@/utils/text';
 import { colors, radius, space, type } from '@/theme/tokens';
@@ -108,6 +112,7 @@ export default function PortfolioScreen() {
   const [filter, setFilter] = useState('');
   const [favOnly, setFavOnly] = useState(false);
   const [sort, setSort] = useState<Sort>('value');
+  const fx = useFxRate();
   const [hidden, setHidden] = useState(false);
   const [switcher, setSwitcher] = useState(false);
   const [selecting, setSelecting] = useState(false);
@@ -125,9 +130,13 @@ export default function PortfolioScreen() {
         (!favOnly || state?.favorites.includes(e.cardId)) &&
         (!f || normalize(`${e.card.name} ${e.card.setName ?? ''}`).includes(f)),
     );
-    list = sort === 'value' ? byValue(list) : [...list].sort((a, b) => b.addedAt.localeCompare(a.addedAt));
+    const rate = fx.data ?? undefined;
+    list =
+      sort === 'value'
+        ? byValue(list, (a, c) => sortValue(a, c, rate))
+        : [...list].sort((a, b) => b.addedAt.localeCompare(a.addedAt));
     return list;
-  }, [all, filter, favOnly, sort, state?.favorites]);
+  }, [all, filter, favOnly, sort, state?.favorites, fx.data]);
 
   if (!state) {
     return (
@@ -165,8 +174,10 @@ export default function PortfolioScreen() {
     setRefreshing(true);
     setNotice(undefined);
     try {
-      const { change, failed } = await refreshPortfolioPrices(client, state);
+      const { change, cards, failed } = await refreshPortfolioPrices(client, state);
       await update.mutateAsync(change);
+      const h = await updateHistory((x) => cards.reduce((acc, c) => withCard(acc, c), x));
+      client.setQueryData(HISTORY_KEY, h);
       setNotice(failed ? `Prices updated. ${failed} card${failed === 1 ? '' : 's'} could not be refreshed.` : 'Prices updated.');
     } catch {
       setNotice('Could not refresh prices. Check your connection.');
@@ -216,9 +227,7 @@ export default function PortfolioScreen() {
       </Pressable>
 
       <View style={styles.totalRow}>
-        <Text style={styles.total} accessibilityLabel={hidden ? 'Total value hidden' : `Total value ${formatTotals(t.byCurrency)}`}>
-          {hidden ? '••••••' : formatTotals(t.byCurrency)}
-        </Text>
+        <TotalValue byCurrency={t.byCurrency} hidden={hidden} style={styles.total} align="center" />
         <Pressable onPress={() => setHidden((v) => !v)} style={styles.eye} accessibilityRole="button" accessibilityLabel={hidden ? 'Show total value' : 'Hide total value'}>
           <Icon name={hidden ? 'eyeOff' : 'eye'} color={colors.textSecondary} size={20} />
         </Pressable>

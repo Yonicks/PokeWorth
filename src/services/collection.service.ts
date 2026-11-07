@@ -41,10 +41,23 @@ export function updateCollection(
   return run;
 }
 
-/** The price an entry keeps: the printing's first (preferred) provider price. */
+/**
+ * The price an entry keeps: the printing's first (preferred) provider price,
+ * plus the Cardmarket 7- and 30-day change when the printing has one (used for
+ * market movers, since TCGplayer gives no averages).
+ */
 export function snapshotPrice(printing: Printing): PriceSnapshot | undefined {
   const p = printing.prices[0];
-  return p ? { amount: p.amount, currency: p.currency, provider: p.provider, updated: p.updated } : undefined;
+  if (!p) return undefined;
+  const withChange = printing.prices.find((x) => x.vs30d !== undefined || x.vs7d !== undefined);
+  return {
+    amount: p.amount,
+    currency: p.currency,
+    provider: p.provider,
+    updated: p.updated,
+    vs7d: withChange?.vs7d,
+    vs30d: withChange?.vs30d,
+  };
 }
 
 export function entryInputFor(card: Card, printing: Printing, portfolioId?: string): EntryInput {

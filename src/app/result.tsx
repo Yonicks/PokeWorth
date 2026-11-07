@@ -7,8 +7,11 @@ import { AddToPortfolio } from '@/components/add-to-portfolio';
 import { CardHero, Facts, PriceBlock, PrintingPicker } from '@/components/card-detail';
 import { Icon } from '@/components/icons';
 import { useCard } from '@/hooks/use-cards';
+import { PriceChart } from '@/components/price-chart';
 import { useCollection, useUpdateCollection } from '@/hooks/use-collection';
+import { useHistory, useRecordCard } from '@/hooks/use-history';
 import { toggleFavorite } from '@/services/collection.model';
+import { seriesKey } from '@/services/history.model';
 import { defaultPrinting, printingsFor } from '@/services/printings.service';
 import { addRecentScan } from '@/services/storage.service';
 import { colors, radius, space, type } from '@/theme/tokens';
@@ -65,6 +68,8 @@ export default function CardDetailScreen() {
   }, [card.data]);
 
   const printings = useMemo(() => (card.data ? printingsFor(card.data) : []), [card.data]);
+  useRecordCard(card.data);
+  const history = useHistory();
 
   if (card.isLoading) {
     return (
@@ -89,6 +94,8 @@ export default function CardDetailScreen() {
   const selected = printings.find((p) => p.id === selectedId) ?? defaultPrinting(printings);
   const official = data.set?.cardCount?.official;
   const number = official ? `${data.localId}/${official}` : data.localId;
+  const series = selected ? (history.data?.cards[seriesKey(data.id, selected.id)] ?? []) : [];
+  const seriesCurrency = series[series.length - 1]?.c ?? selected?.prices[0]?.currency ?? 'USD';
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
@@ -121,6 +128,14 @@ export default function CardDetailScreen() {
 
         <PrintingPicker printings={printings} selectedId={selected?.id} onSelect={setSelectedId} />
         <PriceBlock printing={selected} />
+        {selected && selected.prices.length > 0 ? (
+          <PriceChart
+            points={series}
+            currency={seriesCurrency}
+            title={`${selected.prices[0].provider} price history`}
+            emptyText="No price recorded yet for this printing."
+          />
+        ) : null}
 
         <Pressable
           style={({ pressed }) => [styles.sold, pressed && styles.pressed]}

@@ -505,3 +505,38 @@ pull-to-refresh (logic covered by fixtures). On-phone check pending (owner).
 
 Known limits: totals in USD and EUR are shown side by side until currency conversion
 (step 5); "By value" sorting compares amounts without converting currencies.
+
+### Step 5 · History, movers and currency (new P7)
+
+- `src/services/history.model.ts` (pure, tested): `pokeworth.history.v1`, one point per
+  day per printing (`cardId|printingId`) and per portfolio (totals per currency), capped
+  at 730 days and 1,500 series. Nothing is back-filled: TCGdex has no history, so charts
+  start on the day a card is first seen on this phone. A change of currency restarts a
+  series.
+- Recording: opening Card Details records today's price of each printing; every saved
+  collection change records today's portfolio value; once per calendar day (first open,
+  or returning to the app on a new day) all owned cards are refreshed and recorded
+  (`runDailySnapshot`, `useDailySnapshot` in the tabs layout); pull-to-refresh records too.
+- `src/components/price-chart.tsx`: line + area chart with low/high guides, start/end
+  dates, change over the range, 1M · 3M · 6M · 12M · MAX pills, and plain empty /
+  one-day states. Shown on Card Details for the selected printing and on Home for the
+  portfolio.
+- Currency: `src/services/currency.model.ts` (pure, tested) and `fx.service.ts` (ECB rate
+  via `api.frankfurter.dev/v1`, checked 2026-11-07: free, no key, CORS `*`, last rate kept
+  for offline). Profile → "Currency for totals": USD (default), EUR or Original. Portfolio
+  and Home totals convert and show the rate and its date; card prices keep their source
+  currency. "By value" sorting now compares in USD.
+- Movers (Home): owned printings that moved most against their 30-day Cardmarket average
+  (stored with each price snapshot as `vs7d` / `vs30d`).
+- `scripts/history-fixtures.ts`: 24 offline checks.
+
+Verified in Chrome at 375 × 812: opening Home ran today's snapshot (3 printing series +
+portfolio point, `lastDaily` 2026-11-07); Home total $5,870.01 with "converted at
+€1 = $1.1165 (ECB, 2026-11-06)"; Movers +42.1 % / −17.8 %; one-day chart says history
+starts today; with six injected sample points (removed afterwards) the Card Details
+chart draws with guides $902.50 / $987.13 and +9.4 % 1M; EUR setting gives €5,257.51.
+`tsc` PASS, `expo lint` PASS, fixtures OCR 21/21, pricing 12/12, collection 21/21,
+history 24/24, iOS bundle builds. On-phone check pending (owner).
+
+Known limits: past days' portfolio values are converted at today's rate; the per-card
+"Adding to" total on Card Details is not converted.

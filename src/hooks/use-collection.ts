@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import type { CollectionState } from '@/services/collection.model';
 import { loadCollection, updateCollection } from '@/services/collection.service';
+import { updateHistory, withPortfolios } from '@/services/history.service';
 
 const KEY = ['collection'] as const;
 
@@ -28,6 +29,12 @@ export function useUpdateCollection() {
     onError: (_e, _change, ctx) => {
       if (ctx?.current) client.setQueryData(KEY, ctx.current);
     },
-    onSuccess: (saved) => client.setQueryData(KEY, saved),
+    onSuccess: (saved) => {
+      client.setQueryData(KEY, saved);
+      // Keep today's portfolio-value point in step with what was saved.
+      updateHistory((h) => withPortfolios(h, saved))
+        .then((h) => client.setQueryData(['history'], h))
+        .catch(() => undefined);
+    },
   });
 }

@@ -138,7 +138,7 @@ footer p { font-size: 13px; color: var(--fg-3); }
 <div class="wrap">
 
 <header>
-  <div class="eyebrow">Build plan · steps 1–4 of 6 built</div>
+  <div class="eyebrow">Build plan · steps 1–5 of 6 built</div>
   <h1>PokeWorth <span>Collector Roadmap</span></h1>
   <p>This plan covers the portfolio, card detail, search and overview screens from the five Collectr screenshots you shared, rebuilt in PokeWorth's own navy-and-gold style. For each feature it says where the data would come from, whether that data is free, and which phase builds it.</p>
   <div class="meta">
@@ -313,7 +313,7 @@ footer p { font-size: 13px; color: var(--fg-3); }
           <tr><td>Value + 30-day change</td><td>Total, plus its change since the first daily snapshot inside the window.</td><td><span class="tag part">partial</span> starts empty, fills day by day</td><td class="phase">P7</td></tr>
           <tr><td>Value chart</td><td>Portfolio value over time with 1D · 7D · 1M · 3M · 6M · MAX pills.</td><td><span class="tag part">partial</span> on-device snapshots</td><td class="phase">P7</td></tr>
           <tr><td>Most valuable</td><td>Top 4 cards by value, with condition, printing and change; "View all" opens the Portfolio tab.</td><td><span class="tag free">free</span></td><td class="phase">P5</td></tr>
-          <tr><td>Currency switch</td><td>Show values in USD or EUR. TCGplayer prices are in USD and Cardmarket in EUR; conversion uses the European Central Bank's daily rates.</td><td><span class="tag free">free</span> Frankfurter API (to verify)</td><td class="phase">P7</td></tr>
+          <tr><td>Currency switch</td><td>Show values in USD or EUR. TCGplayer prices are in USD and Cardmarket in EUR; conversion uses the European Central Bank's daily rates.</td><td><span class="tag free">free</span> Frankfurter API (checked 7 Nov 2026)</td><td class="phase">P7</td></tr>
           <tr><td>Performance tab</td><td>Gain or loss against what you paid, if you enter purchase prices.</td><td><span class="tag free">free</span> user input</td><td class="phase">Later</td></tr>
         </tbody>
       </table></div>
@@ -350,7 +350,7 @@ footer p { font-size: 13px; color: var(--fg-3); }
     <li><div><h3>Card detail · P2 <span class="tag free">built</span></h3><p>Hero artwork, title block, a price for each printing with provider, currency and date, 7- and 30-day change, the sold-listings link, and a variant picker before any price.</p><p class="why">This is the screen a scan lands on, so it matters most.</p></div></li>
     <li><div><h3>Search and sets · P2.4 <span class="tag free">built</span></h3><p>Search tab with the camera button, a result grid, and the Show Sets browser.</p><p class="why">Reuses the matcher that was just improved.</p></div></li>
     <li><div><h3>Portfolio · P5 <span class="tag free">built</span></h3><p>Storage v1 with several portfolios, quantity steppers on Card detail and +1 in Search, the grid, totals, search, filter, bulk actions and CSV export. Most valuable cards appear on Home.</p><p class="why">Once you own cards in the app, the history and overview features have something to show.</p></div></li>
-    <li><div><h3>History and movers · new P7</h3><p>Daily on-device snapshots of portfolio and per-card prices, the price chart with range pills, the Home value chart, market movers for your own cards, and the USD/EUR switch.</p><p class="why">Charts look empty for the first weeks, so this comes after Portfolio.</p></div></li>
+    <li><div><h3>History and movers · new P7 <span class="tag free">built</span></h3><p>Daily on-device snapshots of portfolio and per-card prices, the price chart with range pills, the Home value chart, market movers for your own cards, and the USD/EUR switch.</p><p class="why">Charts look empty for the first weeks, so this comes after Portfolio.</p></div></li>
     <li><div><h3>Graded cards · new P8</h3><p>"Add a graded card" with grading company, grade, certificate number and a value you enter yourself. Graded market prices and population only arrive if decision 2 finds a source.</p><p class="why">Collectors can record graded cards now, without data we don't have.</p></div></li>
   </ol>
 </section>

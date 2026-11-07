@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, View, type ColorValue } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Icon, type IconName } from '@/components/icons';
+import { useDailySnapshot } from '@/hooks/use-history';
 import { colors } from '@/theme/tokens';
 
 function tabIcon(name: IconName) {
@@ -30,6 +31,8 @@ function ScanTabButton() {
 
 export default function TabsLayout() {
   const insets = useSafeAreaInsets();
+  // Daily price snapshot of owned cards (roadmap step 5).
+  useDailySnapshot();
   return (
     <Tabs
       screenOptions={{

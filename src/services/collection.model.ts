@@ -12,6 +12,9 @@ export interface PriceSnapshot {
   provider: 'TCGplayer' | 'Cardmarket';
   /** Provider's own date for the price. */
   updated?: string;
+  /** Cardmarket change vs its 7- / 30-day average, in percent (market movers). */
+  vs7d?: number;
+  vs30d?: number;
 }
 
 /** Card facts copied in so the Portfolio renders without a network call. */
@@ -299,9 +302,15 @@ export function totals(entries: CollectionEntry[]): Totals {
   return { byCurrency, pricedCopies, unpricedCopies, copies: pricedCopies + unpricedCopies };
 }
 
-/** Highest value first (quantity × price, compared within the same currency order). */
-export function byValue(entries: CollectionEntry[]): CollectionEntry[] {
-  const value = (e: CollectionEntry) => (e.price ? e.price.amount * e.quantity : -1);
+/**
+ * Highest value first (quantity × price). Pass `toUsd` to compare across
+ * currencies; without it raw amounts are compared.
+ */
+export function byValue(
+  entries: CollectionEntry[],
+  toUsd: (amount: number, currency: string) => number = (a) => a,
+): CollectionEntry[] {
+  const value = (e: CollectionEntry) => (e.price ? toUsd(e.price.amount * e.quantity, e.price.currency) : -1);
   return [...entries].sort((a, b) => value(b) - value(a));
 }
 

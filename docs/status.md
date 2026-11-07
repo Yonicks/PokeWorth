@@ -745,3 +745,15 @@ it back on (restart Expo with `--clear`). The decision lives in `shouldRereadNum
 (`binder-scan.model.ts`, tested). A normal page now costs at most 9 requests. Next idea if the
 limit still bites: the hybrid (read the whole page once with word positions, re-read only
 shaky pockets), est. 4-6 requests per page, to be measured on the owner's pages first.
+
+### OCR order: phone first, OCR.space second (2026-11-08)
+`recognizeCardText` now reads with the phone's own reader first (Apple Vision on iPhone, ML
+Kit on Android, via `expo-text-extractor`: free, unlimited, private) and asks OCR.space only
+when the device reader is missing (Expo Go, web), throws, or returns almost no text
+(`needsCloudFallback`, `ocr-policy.ts`, under 6 letters/digits). If the device read worked but
+was thin and the cloud fails or is limited, the thin device read is kept instead of an error,
+so an empty pocket never stops a page at the reading limit. `OcrResult.source` says which
+reader answered. The device reader exists only in development and release builds, not in
+Expo Go: on the owner's iPhone in Expo Go everything still goes to OCR.space. A free way to
+use it today is an Android development build on the emulator (`npx expo run:android`).
+iPhone needs an Apple Developer account ($99/year) or a Mac. Fixtures: OCR 27/27.

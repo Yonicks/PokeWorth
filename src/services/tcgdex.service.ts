@@ -28,11 +28,15 @@ async function get<T>(path: string): Promise<T> {
   return (await res.json()) as T;
 }
 
-/** Fuzzy search cards by name. Returns compact records. */
-export async function searchCardsByName(name: string): Promise<CardBrief[]> {
+/**
+ * Fuzzy search cards by name, optionally only cards with exactly this HP
+ * (checked 2026-11-08: "Alakazam" gives 35 cards, with hp=140 only 4).
+ * Returns compact records.
+ */
+export async function searchCardsByName(name: string, hp?: number): Promise<CardBrief[]> {
   const query = encodeURIComponent(name.trim());
   if (!query) return [];
-  return get<CardBrief[]>(`/cards?name=like:${query}`);
+  return get<CardBrief[]>(`/cards?name=like:${query}${hp ? `&hp=${hp}` : ''}`);
 }
 
 /**
@@ -82,21 +86,28 @@ export async function getSet(id: string): Promise<SetDetail> {
   return get<SetDetail>(`/sets/${encodeURIComponent(id)}`);
 }
 
-let setSizesRequest: Promise<Map<string, number>> | null = null;
+let setsRequest: Promise<SetBrief[]> | null = null;
+
+/** The whole set list, oldest first, cached for the session (a failure is not cached). */
+function allSets(): Promise<SetBrief[]> {
+  setsRequest ??= get<SetBrief[]>('/sets').catch((error: unknown) => {
+    setsRequest = null;
+    throw error;
+  });
+  return setsRequest;
+}
+
+/** Official (printed) card count per set id, e.g. "base1" -> 102. */
+export async function getSetSizes(): Promise<Map<string, number>> {
+  return new Map((await allSets()).map((s) => [s.id, s.cardCount.official]));
+}
 
 /**
- * Official (printed) card count per set id, e.g. "base1" -> 102. One request
- * for the whole catalog, cached for the session; a failed request is retried
- * next time instead of being cached.
+ * Release order per set id: a higher number is a newer set (TCGdex lists sets
+ * oldest first). Used to prefer newer printings when everything else ties.
  */
-export function getSetSizes(): Promise<Map<string, number>> {
-  setSizesRequest ??= get<SetBrief[]>('/sets')
-    .then((sets) => new Map(sets.map((s) => [s.id, s.cardCount.official])))
-    .catch((error: unknown) => {
-      setSizesRequest = null;
-      throw error;
-    });
-  return setSizesRequest;
+export async function getSetOrder(): Promise<Map<string, number>> {
+  return new Map((await allSets()).map((s, i) => [s.id, i]));
 }
 
 /** Set id from a card id: "base1-4" -> "base1", "sv06.5-042" -> "sv06.5". */

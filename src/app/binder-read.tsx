@@ -61,7 +61,7 @@ function PocketTile({
       disabled={!reviewable}
       style={[styles.tile, status === 'reading' && styles.tileReading, review?.ticked && styles.tileTicked]}
       accessibilityRole="button"
-      accessibilityLabel={`${pocketLabel(pocket)}: ${s.label}${card ? `, ${card.name}` : ''}${review?.ticked ? ', ticked' : ''}`}
+      accessibilityLabel={`${pocketLabel(pocket)}: ${review?.unsure ? 'printing unsure' : s.label}${card ? `, ${card.name}` : ''}${review?.ticked ? ', ticked' : ''}`}
       accessibilityHint={reviewable ? 'Opens this pocket to change the match' : undefined}>
       <Image
         source={{ uri: card?.image ? cardImageUrl(card.image, 'low') : pocket.uri }}
@@ -81,8 +81,13 @@ function PocketTile({
       ) : null}
       <View style={[styles.stripe, { backgroundColor: s.color }]} />
       <Text style={styles.status} numberOfLines={1}>
-        {s.label}
+        {review?.unsure ? 'Printing unsure' : s.label}
       </Text>
+      {review?.unsure ? (
+        <Text style={styles.unsure} numberOfLines={1}>
+          {review.variants > 24 ? '25+' : review.variants} possible, tap to pick
+        </Text>
+      ) : null}
       <Text style={styles.name} numberOfLines={2}>
         {card ? card.name : status === 'error' ? (result?.error ?? '') : status === 'reading' ? '' : '—'}
       </Text>
@@ -333,6 +338,7 @@ const styles = StyleSheet.create({
   progressFill: { height: '100%', backgroundColor: colors.gold400 },
   summary: { ...type.cardMeta, color: colors.textSecondary },
   debug: { fontFamily: 'Courier', fontSize: 11, color: '#f6b35b' },
+  unsure: { fontSize: 11, lineHeight: 14, color: '#F6B35B' },
   grid: { flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -4 },
   tile: { padding: 6, gap: 3, borderRadius: radius.card, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, minHeight: 190 },
   tileReading: { borderColor: colors.gold400 },

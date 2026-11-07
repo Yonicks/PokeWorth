@@ -160,6 +160,16 @@ export function previewRectToPhoto(
   );
 }
 
+/**
+ * The bottom part of a pocket image, where the collector number is printed
+ * (the card sits inside the pocket, so this takes the lower 30 %). Read on its
+ * own it gives the OCR a close-up of the tiny number.
+ */
+export function bottomStripRect(width: number, height: number): Rect {
+  const top = Math.round(height * 0.7);
+  return { originX: 0, originY: top, width: Math.round(width), height: Math.max(1, Math.round(height) - top) };
+}
+
 /** "Row 2, pocket 3" for screen readers and error messages. */
 export function pocketLabel(p: Pick<PocketRect, 'row' | 'col'>): string {
   return `Row ${p.row + 1}, pocket ${p.col + 1}`;

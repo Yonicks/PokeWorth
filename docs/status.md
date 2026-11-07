@@ -701,3 +701,25 @@ found, none ticked, tick two → "Add 2 cards to Main", open a pocket (5 candida
 another candidate (ticks it) → "Add 3 cards", Add → "Added 3 cards to Main, $171.46" and the
 saved collection grew by 3 (test cards removed afterwards). Not verified: the live camera
 and grid on a phone, a real binder photo through the app, and 12-pocket pages.
+
+### Printing accuracy (after the first phone test, 2026-11-08)
+Phone test on the owner's 4th page: names were right but 4 of 9 pockets showed an old printing
+(Trevenant, Ditto, Dialga, Hariyama) and Energy Retrieval was not found, because the tiny
+collector number was not read and a name-only match picked an arbitrary printing.
+- **HP filter** (`parseHp`, `searchCardsByName(name, hp)`): the HP is read off the top of the
+  card ("- 140", "Te 130 G", "$280") and the catalog is asked for that HP first
+  (Alakazam 35 → 4 printings, Kyogre 140 → 2). Only lines with a symbol beside the number
+  count, so a bare attack damage is not taken for HP.
+- **Newest printing first** when scores tie (`getSetOrder`), and **"Printing unsure"**: no
+  number read and several printings possible → tile label with the count, never ticked.
+- **Second read of the bottom strip** (`bottomStripRect`, `cropBottomStrip`, `mergeNumber`):
+  only for pockets still unsure; the number (and set size) is merged, the name stays.
+- Result on the 4th page (names/ids): Alakazam mep-003, Keldeo me04-019, Greedent sv10-159,
+  Trevenant me04-039, Kyogre 30th-019, Ditto 30th-115, Dialga me01-095, Hariyama me01-073,
+  Energy Retrieval me04-108 (was not found). Before: old printings for four of them.
+  Not independently verified against the physical cards except Ditto, Kyogre and Keldeo
+  (numbers visible in the photo).
+- The strip read found no number in three band positions on the chat-downscaled photo
+  (1932 px wide, number ~10 px tall); not yet shown to help. Real phone photos have about 1.5×
+  more pixels.
+- Tests: binder fixtures 75/75; earlier pages still 25/27.

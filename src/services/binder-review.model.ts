@@ -20,6 +20,10 @@ export interface ReviewPocket {
   status: PocketStatus;
   /** OCR text of the pocket (shown in the sheet in development builds). */
   lines: string[];
+  /** The printing is a guess (no collector number read): never ticked automatically. */
+  unsure: boolean;
+  /** How many printings of this card name are possible, for the "unsure" label. */
+  variants: number;
   /** Best guesses from the matcher, most likely first (at most 5). */
   candidates: CardBrief[];
   /** The card the user (or the matcher) picked for this pocket. */
@@ -44,9 +48,11 @@ export function initReview(results: (PocketResult | undefined)[]): ReviewPocket[
         uri: r.uri,
         status: r.status,
         lines: r.lines,
+        unsure: !!r.unsure,
+        variants: r.outcome?.variants ?? 0,
         candidates,
         cardId: hasCard ? candidates[0].id : undefined,
-        ticked: hasCard && startsTicked(r.status),
+        ticked: hasCard && startsTicked(r.status) && !r.unsure,
       };
     });
 }

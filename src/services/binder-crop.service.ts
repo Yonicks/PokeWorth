@@ -11,6 +11,7 @@
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 
 import {
+  bottomStripRect,
   DEFAULT_INSET,
   fullFrame,
   guideFrame,
@@ -39,6 +40,16 @@ export interface CropOptions {
 export async function imageSize(uri: string): Promise<{ width: number; height: number }> {
   const ref = await ImageManipulator.manipulate(uri).renderAsync();
   return { width: ref.width, height: ref.height };
+}
+
+/** Crop the bottom strip (collector number area) out of one pocket image. */
+export async function cropBottomStrip(uri: string): Promise<string> {
+  const { width, height } = await imageSize(uri);
+  const r = bottomStripRect(width, height);
+  const context = ImageManipulator.manipulate(uri);
+  context.crop({ originX: r.originX, originY: r.originY, width: r.width, height: r.height });
+  const image = await context.renderAsync();
+  return (await image.saveAsync({ format: SaveFormat.JPEG, compress: 0.95 })).uri;
 }
 
 /**

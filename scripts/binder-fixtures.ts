@@ -9,6 +9,7 @@ import {
   LAYOUTS,
   pageAspect,
   pocketLabel,
+  bottomStripRect,
   pocketRects,
   POCKET_ASPECT,
   previewRectToPhoto,
@@ -39,9 +40,15 @@ import {
   textChars,
 } from '../src/services/binder-scan.model';
 import {
+  isPrintingUnsure,
+  mergeNumber,
   nameCandidates,
   nameVariants,
+  parseHp,
+  parseOcrLines,
+  rankCandidates,
   resembles,
+  sameNameCount,
   searchOrder,
   type MatchOutcome,
 } from '../src/services/card-matcher.service';
@@ -108,6 +115,42 @@ check('a 3×3 pocket from a 12 MP photo is big enough to read (≥ 900 px wide)'
   p9[0].width >= 900, String(p9[0].width));
 check('labels read row then pocket', pocketLabel(p9[5]) === 'Row 2, pocket 3');
 check('layout table matches pocket counts', LAYOUTS['3x3'].cols * LAYOUTS['3x3'].rows === 9 && LAYOUTS['2x2'].label === '4 pockets');
+
+// ── Printing accuracy: HP, strip number, unsure printings ───────────────────
+
+check('HP is read from the usual OCR shapes',
+  [['Hop\'s Snorlax', '- 150 *'], ['Chesnaught', '- 180'], ['Zamazenta', 'Te 130 G'], ['Gengar eX', '$280'], ['Sliggoo', 'RP 90 C'], ['Blaziken', '-D 170 €'], ['Kyogre', 'HP 140']]
+    .map(([n, l]) => parseHp([n, l])).join(',') === '150,180,130,280,90,170,140');
+check('attack damage lower on the card is not taken for HP',
+  parseHp(['Ditto', 'Poke-Power', 'Transform', '50', '30', 'Weakness 2']) === undefined, String(parseHp(['Ditto', 'Poke-Power', 'Transform', '50', '30'])));
+check('odd numbers and set numbers are not HP', parseHp(['Pikachu', '58/102', '135', '7']) === undefined);
+check('parseOcrLines carries the HP', parseOcrLines(['Alakazam', '- 140', 'Psychic Draw']).hp === 140);
+
+const mergedNo = mergeNumber({ name: 'Ditto', rawLines: ['Ditto', 'x'], hp: 70 }, ['Illus. Tomokazu', '115/128 *']);
+check('the strip adds the number and set size, nothing else',
+  mergedNo.localId === '115' && mergedNo.setTotal === 128 && mergedNo.name === 'Ditto' && mergedNo.hp === 70 && mergedNo.rawLines.length === 2, JSON.stringify(mergedNo));
+check('a strip without a number changes nothing', mergeNumber({ name: 'Ditto', rawLines: [] }, ['Illus. Someone', 'GAME FREAK']).localId === undefined);
+const bs = bottomStripRect(800, 1100);
+check('the strip is the lower 30% of the pocket, full width', bs.originX === 0 && bs.width === 800 && bs.originY === 770 && bs.originY + bs.height === 1100, JSON.stringify(bs));
+
+const m = (parsedNo: string | undefined, variants: number) => ({ parsed: { localId: parsedNo, rawLines: [] }, variants });
+check('no number and several printings: printing unsure', isPrintingUnsure(m(undefined, 5)));
+check('a read number or a single printing: not unsure', !isPrintingUnsure(m('115', 5)) && !isPrintingUnsure(m(undefined, 1)));
+const b2 = (id: string, name: string): CardBrief => ({ id, localId: '1', name });
+check('same-name count looks at the best card only',
+  sameNameCount([{ card: b2('a', 'Ditto'), score: 1, reasons: [] }, { card: b2('b', 'Ditto'), score: 1, reasons: [] }, { card: b2('c', 'Dittox'), score: 0.8, reasons: [] }]) === 2);
+
+const tie = [b2('base1-1', 'Alakazam'), b2('mep-1', 'Alakazam'), b2('sv06-1', 'Alakazam')];
+const ordered = rankCandidates(tie, { name: 'Alakazam', rawLines: [] }, { setOrder: new Map([['base1', 0], ['sv06', 200], ['mep', 230]]) });
+check('tied printings: newest set first', ordered.map((c) => c.card.id).join(',') === 'mep-1,sv06-1,base1-1', ordered.map((c) => c.card.id).join(','));
+
+const mkResult = (index: number, status: PocketStatus, cands: CardBrief[], unsure = false) =>
+  ({
+    index, row: 0, col: index, uri: `u${index}`, status, lines: [], unsure,
+    outcome: { parsed: { rawLines: [] }, candidates: cands.map((card) => ({ card, score: 0.9, reasons: [] })), variants: cands.length },
+  }) as unknown as PocketResult;
+const rv = initReview([mkResult(0, 'check', [b2('d-1', 'Ditto'), b2('d-2', 'Ditto')], true), mkResult(1, 'sure', [b2('k-1', 'Keldeo')])]);
+check('an unsure pocket is never ticked, whatever its status', !rv[0].ticked && rv[0].unsure && rv[1].ticked && !rv[1].unsure);
 
 // ── Phone test fixes: camera size and missing catalog names ─────────────────
 

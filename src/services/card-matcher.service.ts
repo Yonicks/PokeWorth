@@ -6,7 +6,14 @@
 
 import type { Card, CardBrief, ParsedCardText, ScoredCandidate } from '../types/card';
 import { normalize, similarity } from '../utils/text';
-import { getCard, getCardInSet, getSetSizes, searchCardsByName, setIdOf } from './tcgdex.service';
+import {
+  getCard,
+  getCardInSet,
+  getSetOrder,
+  getSetSizes,
+  searchCardsByName,
+  setIdOf,
+} from './tcgdex.service';
 
 /** Collector number with a set total, e.g. "4/102" or "TG12/TG30". */
 const COLLECTOR_NUMBER_RE = /\b([A-Z]{0,4}\d{1,3}[a-z]?)\s*\/\s*([A-Z]{0,4}\d{1,3})\b/;
@@ -106,7 +113,51 @@ export function parseOcrLines(rawLines: string[]): ParsedCardText {
   const [name] = nameCandidates(rawLines);
   if (name) result.name = name;
 
+  const hp = parseHp(rawLines);
+  if (hp) result.hp = hp;
+
   return result;
+}
+
+/**
+ * Add a collector number read from a close-up of the card's bottom strip to
+ * what the full read found. Only the number (and set size) is taken from the
+ * strip; the name and the lines used for matching stay from the full read, so
+ * stray words in the strip are never taken for a name.
+ */
+export function mergeNumber(parsed: ParsedCardText, stripLines: string[]): ParsedCardText {
+  const fromStrip = parseOcrLines(stripLines);
+  if (!fromStrip.localId) return parsed;
+  return {
+    ...parsed,
+    localId: fromStrip.localId,
+    setTotal: fromStrip.setTotal ?? parsed.setTotal,
+  };
+}
+
+/**
+ * Hit points, read from the top of the card: a line with "HP", or a short
+ * line holding one number, with a symbol or letters beside it, that is a
+ * multiple of 10 between 30 and 340 ("- 140", "Te 130 G", "$280", "RP 90 C").
+ * Only the first lines are checked so attack damage lower down is never
+ * mistaken for HP.
+ */
+export function parseHp(rawLines: string[]): number | undefined {
+  const top = rawLines.slice(0, 4).map((l) => l.trim());
+  const ok = (v: number) => v >= 30 && v <= 340 && v % 10 === 0;
+  for (const line of top) {
+    const m = /\bhp\s*(\d{2,3})\b|\b(\d{2,3})\s*hp\b/i.exec(line);
+    const v = m ? Number(m[1] ?? m[2]) : NaN;
+    if (ok(v)) return v;
+  }
+  for (const line of top) {
+    // A symbol or letters sit next to the number ("- 140", "Te 130 G"); a bare
+    // number on its own line is more likely attack damage.
+    const m = /^\D{1,5}(\d{2,3})\D{0,3}$/.exec(line);
+    const v = m ? Number(m[1]) : NaN;
+    if (ok(v)) return v;
+  }
+  return undefined;
 }
 
 /**
@@ -214,6 +265,8 @@ export interface RankingContext {
   setSizes?: Map<string, number>;
   /** Full card records by id, for attack and ability names. */
   details?: Map<string, Card>;
+  /** Release order per set id (higher = newer); breaks ties in favour of newer printings. */
+  setOrder?: Map<string, number>;
 }
 
 /** Share of a card's attack/ability names that appear among the OCR lines. */
@@ -280,7 +333,11 @@ export function rankCandidates(
     return { card, score: available > 0 ? earned / available : 0, reasons };
   });
 
-  return scored.sort((a, b) => b.score - a.score);
+  // Equal scores are different printings of the same card; binders hold
+  // mostly recent cards, so the newest set goes first instead of whichever
+  // the catalog happened to list.
+  const age = (c: ScoredCandidate) => context.setOrder?.get(setIdOf(c.card)) ?? -1;
+  return scored.sort((a, b) => (Math.abs(b.score - a.score) > 1e-6 ? b.score - a.score : age(b) - age(a)));
 }
 
 /** Below this gap, two candidates count as equally likely. */
@@ -319,6 +376,8 @@ export interface MatchOutcome {
   candidates: ScoredCandidate[];
   /** Set when exactly one candidate is trustworthy. */
   confidentCardId?: string;
+  /** Candidates sharing the best one's name, i.e. printings that are possible. */
+  variants?: number;
 }
 
 /**
@@ -344,7 +403,10 @@ export async function matchCard(parsed: ParsedCardText): Promise<MatchOutcome> {
       : [parsed.name]
     : [];
   for (const attempt of tries) {
-    const found = await searchCardsByName(attempt);
+    // With the HP read off the card, ask the catalog for that HP first: it
+    // cuts "Alakazam" from 35 printings to 4. Without a hit, search by name.
+    let found = parsed.hp && fromOcr ? await searchCardsByName(attempt, parsed.hp) : [];
+    if (found.length === 0) found = await searchCardsByName(attempt);
     // The catalog search matches any name containing the text, so an attack
     // name ("Collect") finds "Pokémon Collector". An OCR guess only counts
     // when some result really resembles it.
@@ -373,6 +435,13 @@ export async function matchCard(parsed: ParsedCardText): Promise<MatchOutcome> {
       // Ranking falls back to name + number.
     }
   }
+  if (briefs.length > 1) {
+    try {
+      context.setOrder = await getSetOrder();
+    } catch {
+      // Ties then keep the catalog's order.
+    }
+  }
   let ranked = rankCandidates(briefs, parsed, context);
 
   // Attack and ability names split reprints that share a name, number and
@@ -399,5 +468,22 @@ export async function matchCard(parsed: ParsedCardText): Promise<MatchOutcome> {
     parsed,
     candidates: ranked,
     confidentCardId: confident ? ranked[0].card.id : undefined,
+    variants: sameNameCount(ranked),
   };
+}
+
+/** How many ranked candidates carry the same name as the best one (other printings). */
+export function sameNameCount(ranked: ScoredCandidate[]): number {
+  if (ranked.length === 0) return 0;
+  const top = normalize(ranked[0].card.name);
+  return ranked.filter((c) => normalize(c.card.name) === top).length;
+}
+
+/**
+ * The printing is a guess: no collector number was read, so other printings
+ * of the same name are just as likely. Such a match is shown as "Printing
+ * unsure" and never starts ticked.
+ */
+export function isPrintingUnsure(outcome: Pick<MatchOutcome, 'parsed' | 'variants'>): boolean {
+  return !outcome.parsed.localId && (outcome.variants ?? 0) > 1;
 }

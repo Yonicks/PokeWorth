@@ -34,6 +34,8 @@ export default function RootLayout() {
           {/* Tabs draw their own headers; the flows below open above the tabs. */}
           <Stack.Screen name="(tabs)" options={{ headerShown: false, title: 'PokeWorth' }} />
           <Stack.Screen name="scan" options={{ title: 'Scan Card', headerShown: false }} />
+          <Stack.Screen name="binder-scan" options={{ title: 'Scan Binder Page', headerShown: false }} />
+          <Stack.Screen name="binder-read" options={{ title: 'Binder Page' }} />
           <Stack.Screen name="manual-entry" options={{ title: 'Enter Card Details' }} />
           <Stack.Screen name="confirm" options={{ title: 'Confirm Card' }} />
           <Stack.Screen name="sets" options={{ title: 'Sets' }} />

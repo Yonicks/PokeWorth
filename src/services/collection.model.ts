@@ -218,6 +218,23 @@ export function addOne(state: CollectionState, input: EntryInput, now?: string):
   return setQuantity(state, input, current + 1, now);
 }
 
+/** One line of an "add many" (a binder page): an entry and how many copies to add. */
+export interface AddManyItem {
+  input: EntryInput;
+  quantity: number;
+}
+
+/**
+ * Add several cards at once. Cards already in the portfolio get their
+ * quantity raised (like the + button); duplicates in `items` add up.
+ */
+export function addMany(state: CollectionState, items: AddManyItem[], now?: string): CollectionState {
+  return items.reduce((s, { input, quantity }) => {
+    const current = quantityOf(s, input.cardId, input.printingId, input.portfolioId ?? s.activePortfolioId);
+    return setQuantity(s, input, current + Math.max(1, Math.round(quantity)), now);
+  }, state);
+}
+
 export function removeEntries(state: CollectionState, ids: string[]): CollectionState {
   const drop = new Set(ids);
   return { ...state, entries: state.entries.filter((e) => !drop.has(e.id)) };

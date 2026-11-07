@@ -568,3 +568,192 @@ Not exercised in the browser: the eBay grade link (popups are blocked in the tes
 On-phone check pending (owner).
 
 All six collector-roadmap steps are built on `feat/collector-tabs`.
+
+## Binder page scan (planned 2026-11-07)
+
+Plan: `design/plans/binder-scan.html` (published as the "Binder Page Scan" artifact).
+Photograph one binder page; PokeWorth cuts it into pockets, reads and matches each one,
+and shows a review grid (Sure / Check / Not found / Empty). Nothing is added until the
+user confirms.
+
+### Decisions (owner, 2026-11-07)
+
+1. **Layouts:** 3×3 and 2×2 first; 3×4 later if used.
+2. **Reading option:** decided by step 0. If per-pocket (A) and whole-page with word
+   positions (B) do equally well, B; otherwise A.
+3. **Unsure matches:** "Check" pockets start unticked; only "Sure" pockets start ticked.
+4. **Test photos:** owner sends 3 iPhone photos of real binder pages (easy, glare, slight
+   angle) for step 0; used for testing only, kept out of the repo unless agreed.
+
+Status: waiting for the step 0 photos.
+
+### Step 1 · Pocket grid and cropping (branch `feat/binder-scan`)
+
+- `src/services/binder-grid.model.ts` (pure): layouts 3×3, 2×2 (enabled) and 3×4 (later),
+  pocket shape 66 × 92 mm, `guideFrame` (largest page-shaped rectangle centred in a photo
+  with a 5 % margin; the step 3 camera guide uses the same function), `pocketRects` (row
+  by row, 4 % inset per edge by default, whole pixels, clamped to the photo).
+- `src/services/binder-crop.service.ts`: crops every pocket with `expo-image-manipulator`
+  (one context per crop), saved as full-resolution JPEG; "guide" frame for camera photos,
+  "full" for imported ones.
+- `scripts/binder-fixtures.ts`: 20 offline checks (no overlap, inside the photo, reading
+  order, inset, guide shape and margin, clamping, ≥ 900 px pocket width on a 12 MP photo).
+- `src/app/scan.tsx`: back fallback is `router.replace('/')` again; the typed routes now
+  list Home as `/` (the earlier `/(tabs)/index` came from stale generated types).
+
+Verified: binder fixtures 20/20; in the Chrome web build a temporary check screen
+(deleted afterwards) cropped a 600 × 825 card image into 9 pieces of 184 × 253 that
+match the model and show different parts of the card. `tsc` PASS, `expo lint` PASS, all
+other fixtures pass. The inset and pocket shape are first guesses until step 0 measures
+real pages.
+
+### Step 0 · Real-page test (2026-11-07)
+
+Owner's three iPhone binder pages (1932 × 2576 px, 9 pockets each, every card in a
+toploader): page 1 standard cards, page 2 with the left column cut off, angled, glare,
+page 3 full-art cards incl. one sideways. Run outside the app (scratchpad script, not in
+the repo; photos not stored in the repo) through the real `pocketRects` (3×3, 4 % inset)
+and `matchCard`, OCR.space demo key, Engine 2; correct = expected name in the top
+candidate.
+
+| | Option A · per pocket | Option B · whole page + word positions |
+| --- | --- | --- |
+| Right card first | 18 / 27 (5 · 8 · 5) | 16 / 27 (6 · 8 · 2) |
+| Sure | 6, none wrong | 3, none wrong |
+| Collector number read | 10 / 27 | 6 / 27 |
+| Requests / time per page | 9, ~0.9 s each (46 s with 2.5 s spacing) | 1, ~10 s |
+
+**Decision 2 outcome: option A** (better on full art, more numbers read). Inset and pocket
+shape unchanged: they worked even on the cut-off, angled page. Neither option yet reaches
+the 7 / 9 target on every page; most misses are in name choice and search, so step 2
+adds: number lookup across sets of the read size (Misty's Lapras read `050/182` but took
+"Surf" as the name), last-word fallback ("My Gyarados", "STAGEZ Blaziken"), ex-suffix
+cleanup ("Mega Mawile ev", "Pikachuex"), short-prefix search ("Butteri"), top-line
+preference (attack names "Collect", "Heat Blast"), and OCR rotation detection (sideways
+Darkrai & Cresselia). 30 OCR requests used.
+
+### Step 2 · Batch reading and matcher fixes (branch `feat/binder-scan`)
+
+- `src/services/binder-scan.model.ts` (pure): statuses Sure / Check / Not found / Empty /
+  Error; only Sure starts ticked (decision 3); a cancellable queue (3 at a time, results in
+  pocket order); plain error texts, incl. the OCR rate limit.
+- `src/services/binder-scan.service.ts`: `readPocket` / `readPockets` through the existing
+  `recognizeCardText` and `matchCard`; failures become Error pockets.
+- Matcher (`card-matcher.service.ts`), also used by single-card scans:
+  - name variants tried in order, max 8 searches: as read, trailing symbols removed
+    ("Pikachu ex®"), ex suffix cleaned ("ev", "e", glued "ex"), apostrophe restored
+    ("Mistys" → "Misty's"), noisy first word dropped ("My", "N.", "STAGEZ"), short prefix
+    for a cut-off name ("Butteri" → "Butte"); a stage label glued to the name is stripped
+    from the line, and OCR misreads "basis", "stagez", "abilicy", "supporsa" count as
+    labels;
+  - an OCR guess only counts when a result resembles it (starts with it or ≥ 60 %
+    similar), so an attack name no longer finds an unrelated card ("Collect" → "Pokémon
+    Collector");
+  - a read collector number + set size is looked up in every set of that size
+    (`getCardInSet`, leading zeros dropped: TCGdex finds `sv03.5/50` but not
+    `base1/004`).
+- Cloud OCR asks for rotation detection (`detectOrientation`).
+- `scripts/fixtures/binder-ocr.json`: OCR text (no photos) of the owner's 27 pockets,
+  recorded with the owner's own OCR.space key (the shared demo key was rate-limited, HTTP
+  429, after step 0). The key lives in the git-ignored `.env.local` as
+  `EXPO_PUBLIC_OCR_SPACE_KEY`.
+- `scripts/binder-live-check.ts` (needs the network): page scores against the plan target.
+
+| Live check on the owner's pages | Before (step 0, option A) | After step 2 |
+| --- | --- | --- |
+| Right name first | 18 / 27 (5 · 8 · 5) | **25 / 27 (9 · 9 · 7)** — every page ≥ 7 / 9 |
+| Sure | 6, none wrong | 8, none wrong |
+
+The two misses are now honest "Not found" (Froakie: no name in the text; the sideways
+Darkrai & Cresselia LEGEND half: unreadable). "Right" means the right card name; some
+Check pockets still rank an older printing first (Gyarados hgss1-4 instead of Misty's
+Gyarados, Crobat δ, Claydol ex5-2) because the OCR lost the trainer name and TCGdex cannot
+search by attack. The review grid (step 4) lets the user pick the printing.
+Fixtures: binder 42/42, OCR 21/21, pricing 12/12, collection 34/34, history 24/24;
+`tsc` PASS, `expo lint` PASS. Expo restarted so the app uses the owner's OCR key.
+
+### Step 3 · Binder camera and reading screen
+- `/binder-scan`: Card / Binder page switch (also on the Scan screen), 3×3 and 2×2 layouts,
+  gold grid from the crop geometry (dims the rest), glare tip, import. The on-screen guide
+  is mapped to the photo (`previewRectToPhoto`, tested) because the preview covers the
+  screen. "Scan binder" button on the Portfolio tab.
+- `/binder-read`: crops the page, reads 3 pockets at a time, pockets fill in with status;
+  Stop, Retry failed, Scan another page.
+- Cloud OCR: size measured before resizing (fixed "source height is zero" on web crops, no
+  upscaling); temporary 5xx errors retried twice (a 503 from OCR.space appeared once).
+
+### Steps 4 and 5 · Review grid and add to portfolio
+- `binder-review.model.ts` (pure, tested): each pocket starts with the best match; only Sure
+  is ticked (decision 3); tick, choose another candidate (also from a name search), choose
+  printing, skip; ticked pockets group by card + printing, duplicates on one page become a
+  higher quantity. `collection.model.addMany` raises quantities of cards already owned.
+- `binder-pocket-sheet.tsx`: pocket photo, top 5 candidates, printing chips with prices,
+  search by name, Skip, Done. `binder-add.service.ts` loads each card once and builds the
+  additions with today's price.
+- Review screen: tick boxes on tiles, "Add N cards to Main" bar, summary ("Added 3 cards to
+  Main, $171.46"), Scan next page, View portfolio. Cards that fail to load are reported, not
+  silently dropped.
+- Binder fixtures 59/59 (13 new), OCR 21, pricing 12, collection 34, history 24; `tsc` and
+  `expo lint` pass.
+
+Verified in Chrome at 375 × 812 with a public card image as a 2×2 stand-in page: 3 cards
+found, none ticked, tick two → "Add 2 cards to Main", open a pocket (5 candidates), choose
+another candidate (ticks it) → "Add 3 cards", Add → "Added 3 cards to Main, $171.46" and the
+saved collection grew by 3 (test cards removed afterwards). Not verified: the live camera
+and grid on a phone, a real binder photo through the app, and 12-pocket pages.
+
+### Printing accuracy (after the first phone test, 2026-11-08)
+Phone test on the owner's 4th page: names were right but 4 of 9 pockets showed an old printing
+(Trevenant, Ditto, Dialga, Hariyama) and Energy Retrieval was not found, because the tiny
+collector number was not read and a name-only match picked an arbitrary printing.
+- **HP filter** (`parseHp`, `searchCardsByName(name, hp)`): the HP is read off the top of the
+  card ("- 140", "Te 130 G", "$280") and the catalog is asked for that HP first
+  (Alakazam 35 → 4 printings, Kyogre 140 → 2). Only lines with a symbol beside the number
+  count, so a bare attack damage is not taken for HP.
+- **Newest printing first** when scores tie (`getSetOrder`), and **"Printing unsure"**: no
+  number read and several printings possible → tile label with the count, never ticked.
+- **Second read of the bottom strip** (`bottomStripRect`, `cropBottomStrip`, `mergeNumber`):
+  only for pockets still unsure; the number (and set size) is merged, the name stays.
+- Result on the 4th page (names/ids): Alakazam mep-003, Keldeo me04-019, Greedent sv10-159,
+  Trevenant me04-039, Kyogre 30th-019, Ditto 30th-115, Dialga me01-095, Hariyama me01-073,
+  Energy Retrieval me04-108 (was not found). Before: old printings for four of them.
+  Not independently verified against the physical cards except Ditto, Kyogre and Keldeo
+  (numbers visible in the photo).
+- The strip read found no number in three band positions on the chat-downscaled photo
+  (1932 px wide, number ~10 px tall); not yet shown to help. Real phone photos have about 1.5×
+  more pixels.
+- Tests: binder fixtures 75/75; earlier pages still 25/27.
+
+### Second phone test (2026-11-08): why Energy Retrieval was "Not found"
+Not the database: the OCR read "Energy Retrieval" correctly, but the name filter dropped every
+line starting with a label word, including real names ("Energy Retrieval", "Pokémon Center
+Lady", "Trainer's Mail"). Now only whole-line "Energy", "Pokémon", "Item", "Trainer", "Tool"
+count as chrome; prefixes like "Stage 2 …", "Weakness …" still do. Also: digital-only TCG Pocket
+cards (A1, B1a, …) are removed from candidates (Hariyama had landed on `B1a-040`), and the
+attack-name comparison now looks at the top 12 candidates (was 8). Offline check of the
+recorded text: Energy Retrieval → `me04-108`, Hariyama without HP → `me01-073`. Binder
+fixtures 78/78. Open: Alakazam was "Not found" on the phone but found (`mep-003`) when the
+same page was read on the PC; the phone's OCR text for that pocket is needed (tap the tile,
+orange text in the sheet). Greedent showed `#065` instead of `sv10-159` on the phone (number
+not read there).
+
+### Number re-read is off by default (2026-11-08)
+The second OCR request on a pocket's bottom strip found no collector number in three positions
+on the test photo and can double a page's requests (the free OCR.space plan allows 500 a day
+per IP). It is now behind a flag: `EXPO_PUBLIC_BINDER_NUMBER_REREAD=on` in `.env.local` turns
+it back on (restart Expo with `--clear`). The decision lives in `shouldRereadNumber`
+(`binder-scan.model.ts`, tested). A normal page now costs at most 9 requests. Next idea if the
+limit still bites: the hybrid (read the whole page once with word positions, re-read only
+shaky pockets), est. 4-6 requests per page, to be measured on the owner's pages first.
+
+### OCR order: phone first, OCR.space second (2026-11-08)
+`recognizeCardText` now reads with the phone's own reader first (Apple Vision on iPhone, ML
+Kit on Android, via `expo-text-extractor`: free, unlimited, private) and asks OCR.space only
+when the device reader is missing (Expo Go, web), throws, or returns almost no text
+(`needsCloudFallback`, `ocr-policy.ts`, under 6 letters/digits). If the device read worked but
+was thin and the cloud fails or is limited, the thin device read is kept instead of an error,
+so an empty pocket never stops a page at the reading limit. `OcrResult.source` says which
+reader answered. The device reader exists only in development and release builds, not in
+Expo Go: on the owner's iPhone in Expo Go everything still goes to OCR.space. A free way to
+use it today is an Android development build on the emulator (`npx expo run:android`).
+iPhone needs an Apple Developer account ($99/year) or a Mac. Fixtures: OCR 27/27.

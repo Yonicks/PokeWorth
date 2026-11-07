@@ -2,6 +2,7 @@
  * Offline fixtures for OCR text parsing and candidate ranking (no network).
  * Run: npx tsx scripts/ocr-fixtures.ts
  */
+import { needsCloudFallback } from '../src/services/ocr-policy';
 import {
   isConfidentMatch,
   nameCandidates,
@@ -275,7 +276,24 @@ for (const fixture of CANDIDATE_FIXTURES) {
   }
 }
 
+// Which reader to trust: the device first, the cloud only when it fails or finds nothing.
+const POLICY: { label: string; lines: string[] | null; failed: boolean; cloud: boolean }[] = [
+  { label: 'policy: a normal device read is kept (no cloud request)', lines: ['Pikachu', 'HP 60', '58/102'], failed: false, cloud: false },
+  { label: 'policy: a device error falls back to the cloud', lines: null, failed: true, cloud: true },
+  { label: 'policy: an empty device read falls back to the cloud', lines: [], failed: false, cloud: true },
+  { label: 'policy: symbols only count as nothing', lines: ['•', '~~', '1'], failed: false, cloud: true },
+  { label: 'policy: one lone short word is suspicious, so the cloud double-checks', lines: ['Ditto'], failed: false, cloud: true },
+  { label: 'policy: a short name with its other text is enough', lines: ['Ditto', 'HP 70', '115/128'], failed: false, cloud: false },
+];
+for (const p of POLICY) {
+  if (needsCloudFallback(p.lines, p.failed) === p.cloud) console.log(`PASS  ${p.label}`);
+  else {
+    failed++;
+    console.log(`FAIL  ${p.label}`);
+  }
+}
+
 const total =
-  FIXTURES.length + RANK_FIXTURES.length + CONTEXT_FIXTURES.length + CANDIDATE_FIXTURES.length;
+  POLICY.length + FIXTURES.length + RANK_FIXTURES.length + CONTEXT_FIXTURES.length + CANDIDATE_FIXTURES.length;
 console.log(`\n${total - failed}/${total} OCR fixtures passed.`);
 if (failed > 0) process.exit(1);

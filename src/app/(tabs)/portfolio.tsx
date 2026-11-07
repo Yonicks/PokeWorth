@@ -241,6 +241,7 @@ export default function PortfolioScreen() {
 
       <View style={styles.actions}>
         <Action icon="select" label={selecting ? 'Done' : 'Select'} active={selecting} onPress={() => (selecting ? endSelecting() : setSelecting(true))} />
+        <Action icon="camera" label="Scan binder" onPress={() => router.push('/binder-scan')} />
         <Action icon="share" label="Export" onPress={exportCsv} />
         <Action icon="chevron" label={sort === 'value' ? 'By value' : 'Newest'} onPress={() => setSort((s) => (s === 'value' ? 'recent' : 'value'))} />
       </View>
@@ -354,7 +355,7 @@ const styles = StyleSheet.create({
   total: { fontSize: 34, lineHeight: 42, fontWeight: '800', color: colors.textPrimary, fontVariant: ['tabular-nums'], textAlign: 'center', flexShrink: 1 },
   eye: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.raised },
   totalNote: { ...type.cardMeta, color: colors.textTertiary, textAlign: 'center' },
-  actions: { flexDirection: 'row', justifyContent: 'center', gap: space.xl, marginTop: space.md },
+  actions: { flexDirection: 'row', justifyContent: 'center', gap: space.lg, marginTop: space.md },
   action: { alignItems: 'center', gap: 6, minWidth: 64 },
   actionIcon: {
     width: 52,

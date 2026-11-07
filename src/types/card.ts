@@ -107,6 +107,8 @@ export interface ParsedCardText {
   localId?: string;
   /** Printed set size after the slash, e.g. 102 in 4/102. */
   setTotal?: number;
+  /** Hit points read from the top of the card, e.g. 140; narrows the catalog search. */
+  hp?: number;
   /** Raw OCR lines, kept for debugging and manual correction. */
   rawLines: string[];
 }

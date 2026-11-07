@@ -606,3 +606,28 @@ Verified: binder fixtures 20/20; in the Chrome web build a temporary check scree
 match the model and show different parts of the card. `tsc` PASS, `expo lint` PASS, all
 other fixtures pass. The inset and pocket shape are first guesses until step 0 measures
 real pages.
+
+### Step 0 · Real-page test (2026-11-07)
+
+Owner's three iPhone binder pages (1932 × 2576 px, 9 pockets each, every card in a
+toploader): page 1 standard cards, page 2 with the left column cut off, angled, glare,
+page 3 full-art cards incl. one sideways. Run outside the app (scratchpad script, not in
+the repo; photos not stored in the repo) through the real `pocketRects` (3×3, 4 % inset)
+and `matchCard`, OCR.space demo key, Engine 2; correct = expected name in the top
+candidate.
+
+| | Option A · per pocket | Option B · whole page + word positions |
+| --- | --- | --- |
+| Right card first | 18 / 27 (5 · 8 · 5) | 16 / 27 (6 · 8 · 2) |
+| Sure | 6, none wrong | 3, none wrong |
+| Collector number read | 10 / 27 | 6 / 27 |
+| Requests / time per page | 9, ~0.9 s each (46 s with 2.5 s spacing) | 1, ~10 s |
+
+**Decision 2 outcome: option A** (better on full art, more numbers read). Inset and pocket
+shape unchanged: they worked even on the cut-off, angled page. Neither option yet reaches
+the 7 / 9 target on every page; most misses are in name choice and search, so step 2
+adds: number lookup across sets of the read size (Misty's Lapras read `050/182` but took
+"Surf" as the name), last-word fallback ("My Gyarados", "STAGEZ Blaziken"), ex-suffix
+cleanup ("Mega Mawile ev", "Pikachuex"), short-prefix search ("Butteri"), top-line
+preference (attack names "Collect", "Heat Blast"), and OCR rotation detection (sideways
+Darkrai & Cresselia). 30 OCR requests used.

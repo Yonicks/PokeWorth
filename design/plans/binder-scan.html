@@ -146,7 +146,7 @@ footer p { font-size: 13px; color: var(--fg-3); }
 <div class="wrap">
 
 <header>
-  <div class="eyebrow">Feature plan · step 1 built · waiting for test photos</div>
+  <div class="eyebrow">Feature plan · steps 0–1 done · option A chosen</div>
   <h1>Binder <span>Page Scan</span></h1>
   <p>Take one photo of a binder page. PokeWorth splits it into pockets, reads every card, and shows you a review grid with what it found. You fix anything it got wrong, then add all the cards to your portfolio in one tap. Nothing is added until you confirm.</p>
   <div class="meta">
@@ -259,6 +259,34 @@ footer p { font-size: 13px; color: var(--fg-3); }
 
 <section>
   <div class="lead">
+    <div class="eyebrow">Step 0 · measured 7 Nov 2026</div>
+    <h2>Results on your three pages</h2>
+    <p>Each pocket went through the app's real grid model (3×3, 4% inset) and matcher, with the free OCR demo key, and was compared with what is actually in the pocket. The photos are 1932 × 2576 px, so each pocket is about 640 × 860 px. Every card sits in a toploader inside its pocket.</p>
+  </div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Page</th><th>Option A · per pocket</th><th>Option B · whole page</th></tr></thead>
+    <tbody>
+      <tr><td>1 · easy, standard cards</td><td>5 of 9 right · 2 Sure</td><td>6 of 9 right · 0 Sure</td></tr>
+      <tr><td>2 · left column cut off, angled, glare</td><td>8 of 9 right · 2 Sure</td><td>8 of 9 right · 2 Sure</td></tr>
+      <tr><td>3 · full-art cards, one sideways</td><td>5 of 9 right · 2 Sure</td><td>2 of 9 right · 1 Sure</td></tr>
+      <tr><td>All 27 pockets</td><td><strong>18 right · 6 Sure · 0 Sure-but-wrong</strong> · numbers read in 10</td><td>16 right · 3 Sure · 0 Sure-but-wrong · numbers read in 6</td></tr>
+      <tr><td>OCR requests and time</td><td>27 requests; about 0.9 s each, 46 s per page with deliberate spacing</td><td>3 requests; about 10 s per page</td></tr>
+    </tbody>
+  </table></div>
+  <p><strong>Decision 2 outcome: option A.</strong> It does clearly better on full-art cards and reads more collector numbers. The safety rule held: no pocket was marked Sure with the wrong card. The 4% inset and pocket shape worked unchanged, even on the angled page with a cut-off column.</p>
+  <p>Neither option reaches 7 of 9 on every page yet. Most misses come from the matcher, not from unreadable text, and these fixes go into step 2:</p>
+  <ul>
+    <li><strong>Search by number when the name is wrong.</strong> Misty's Lapras: the number <code>050/182</code> was read, but the attack "Surf" was taken as the name. Look the number up in sets of that size.</li>
+    <li><strong>Trainer names and OCR noise in front of the name.</strong> "My Gyarados" for Misty's Gyarados, "STAGEZ Blaziken" and "N. Reshiram": also try the last word ("Gyarados", "Blaziken").</li>
+    <li><strong>Garbled ex suffixes.</strong> "Mega Mawile ev", "Pikachuex": treat ev / eX / a glued "ex" as ex.</li>
+    <li><strong>Cut-off names.</strong> "Butteri" for Butterfree: try a short prefix search when nothing else matches.</li>
+    <li><strong>Attack names taken as card names.</strong> Froakie "Collect", Blaziken "Heat Blast": prefer the line nearest the top of the pocket.</li>
+    <li><strong>The sideways card</strong> (Darkrai &amp; Cresselia LEGEND): ask the OCR to detect rotation.</li>
+  </ul>
+</section>
+
+<section>
+  <div class="lead">
     <div class="eyebrow">Risks</div>
     <h2>What can go wrong, and what the plan does about it</h2>
   </div>
@@ -283,9 +311,9 @@ footer p { font-size: 13px; color: var(--fg-3); }
     <p>Each step ends with tests or something you can try. Step 0 needs your real binder photos.</p>
   </div>
   <ol class="steps">
-    <li><div><h3>Try it on real pages</h3><p>You send 3 photos of real binder pages: one easy, one with glare, one at a slight angle. I run options A and B on them outside the app and record, pocket by pocket, whether the right card came out on top, plus the time and request count.</p><p class="why">This decides the OCR option and the pocket inset before any screens are built.</p></div></li>
+    <li><div><h3>Try it on real pages <span class="tag ok">done</span></h3><p>You send 3 photos of real binder pages: one easy, one with glare, one at a slight angle. I run options A and B on them outside the app and record, pocket by pocket, whether the right card came out on top, plus the time and request count.</p><p class="why">This decides the OCR option and the pocket inset before any screens are built.</p></div></li>
     <li><div><h3>Pocket grid and cropping <span class="tag ok">built</span></h3><p>A pure layout model for 2×2, 3×3 and 3×4 that turns a photo size into pocket rectangles with an inset. A crop service on top of it. Offline tests for the maths.</p></div></li>
-    <li><div><h3>Batch reading</h3><p>A queue that reads and matches pockets three at a time, with progress, cancel, retry for failed pockets and the empty check. Each pocket gets Sure, Check, Not found or Empty. Tested with recorded OCR text from step 0.</p></div></li>
+    <li><div><h3>Batch reading</h3><p>A queue that reads and matches pockets three at a time, with progress, cancel, retry for failed pockets and the empty check. Each pocket gets Sure, Check, Not found or Empty. Also the matcher fixes from step 0: number lookup, last-word and prefix fallbacks, ex suffixes, top-line preference and rotation. Tested with recorded OCR text from your three pages.</p></div></li>
     <li><div><h3>Binder camera</h3><p>A Card / Binder page switch on the Scan screen, the layout picker, the gold grid guide, the glare tip and photo import. Also reachable from the Portfolio tab.</p></div></li>
     <li><div><h3>Review grid</h3><p>Pockets laid out like your page, each with a status colour. Tapping a pocket shows the top 3 matches, search by hand, the printing choice, or skip. Sure pockets start ticked; Check pockets you tick yourself.</p></div></li>
     <li><div><h3>Add to portfolio</h3><p>A tested "add many" in the collection model: duplicates on a page are merged, cards you already own have their quantity raised, and it ends with a summary ("Added 7 cards, $412.30") and <strong>Scan next page</strong>.</p></div></li>

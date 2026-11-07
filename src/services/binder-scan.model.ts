@@ -32,6 +32,24 @@ export function startsTicked(status: PocketStatus): boolean {
   return status === 'sure';
 }
 
+/**
+ * Whether to spend a second OCR request on a close-up of the pocket's bottom
+ * strip, hoping to read the collector number. Off by default (the flag is
+ * EXPO_PUBLIC_BINDER_NUMBER_REREAD=on): on a test photo it found no number and
+ * could double a page's requests, which matters on the free OCR plan.
+ */
+export function shouldRereadNumber(args: {
+  enabled: boolean;
+  status: PocketStatus;
+  numberRead: boolean;
+  printingUnsure: boolean;
+  hasOutcome: boolean;
+}): boolean {
+  if (!args.enabled || args.numberRead || args.status === 'empty') return false;
+  // With no match at all the number is still worth a look; otherwise only for a guessed printing.
+  return !args.hasOutcome || args.printingUnsure;
+}
+
 /** Whether a pocket's error text is the OCR reading limit (every later pocket would fail too). */
 export function isLimitError(text: string | undefined): boolean {
   return !!text && /reading limit/i.test(text);

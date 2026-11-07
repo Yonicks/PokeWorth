@@ -12,6 +12,7 @@ import {
   NOT_READ_TEXT,
   pocketErrorText,
   runQueue,
+  shouldRereadNumber,
   type PocketStatus,
 } from './binder-scan.model';
 import {
@@ -22,6 +23,12 @@ import {
   type MatchOutcome,
 } from './card-matcher.service';
 import { recognizeCardText } from './ocr.service';
+
+/**
+ * Flag: EXPO_PUBLIC_BINDER_NUMBER_REREAD=on in .env.local turns the number
+ * re-read back on (restart Expo with --clear after changing it).
+ */
+export const REREAD_NUMBER = process.env.EXPO_PUBLIC_BINDER_NUMBER_REREAD === 'on';
 
 export interface PocketResult {
   index: number;
@@ -59,9 +66,17 @@ export async function readPocket(pocket: PocketImage): Promise<PocketResult> {
     let status = classifyPocket(lines, outcome ?? null);
     let numberFromStrip = false;
 
-    // Only pockets whose printing is still a guess are worth the extra request:
-    // with the HP filter many cards are already pinned down to one printing.
-    if (status !== 'empty' && !parsed.localId && (!outcome || isPrintingUnsure(outcome))) {
+    // Optional second read of the bottom strip for the collector number (flag
+    // REREAD_NUMBER, off by default): only pockets whose printing is still a guess.
+    if (
+      shouldRereadNumber({
+        enabled: REREAD_NUMBER,
+        status,
+        numberRead: !!parsed.localId,
+        printingUnsure: !!outcome && isPrintingUnsure(outcome),
+        hasOutcome: !!outcome,
+      })
+    ) {
       try {
         const strip = await recognizeCardText(await cropBottomStrip(pocket.uri));
         const merged = mergeNumber(parsed, strip.lines);

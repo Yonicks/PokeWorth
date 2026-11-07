@@ -736,3 +736,12 @@ fixtures 78/78. Open: Alakazam was "Not found" on the phone but found (`mep-003`
 same page was read on the PC; the phone's OCR text for that pocket is needed (tap the tile,
 orange text in the sheet). Greedent showed `#065` instead of `sv10-159` on the phone (number
 not read there).
+
+### Number re-read is off by default (2026-11-08)
+The second OCR request on a pocket's bottom strip found no collector number in three positions
+on the test photo and can double a page's requests (the free OCR.space plan allows 500 a day
+per IP). It is now behind a flag: `EXPO_PUBLIC_BINDER_NUMBER_REREAD=on` in `.env.local` turns
+it back on (restart Expo with `--clear`). The decision lives in `shouldRereadNumber`
+(`binder-scan.model.ts`, tested). A normal page now costs at most 9 requests. Next idea if the
+limit still bites: the hybrid (read the whole page once with word positions, re-read only
+shaky pockets), est. 4-6 requests per page, to be measured on the owner's pages first.

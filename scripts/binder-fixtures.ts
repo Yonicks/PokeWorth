@@ -33,6 +33,7 @@ import type { CardBrief } from '../src/types/card';
 import {
   classifyPocket,
   isLimitError,
+  shouldRereadNumber,
   type PocketStatus,
   pocketErrorText,
   runQueue,
@@ -263,6 +264,12 @@ check('rate limit errors read as a limit', /limit/i.test(pocketErrorText(new Err
 check('the limit text says how long to wait', pocketErrorText(new Error('Cloud OCR HTTP 429 retry 662')) === 'Reading limit reached. Try again in about 12 min.',
   pocketErrorText(new Error('Cloud OCR HTTP 429 retry 662')));
 check('the limit is recognised so reading can stop', isLimitError(pocketErrorText(new Error('Cloud OCR HTTP 429'))) && !isLimitError('No connection.') && !isLimitError(undefined));
+const reread = (over: Partial<Parameters<typeof shouldRereadNumber>[0]> = {}) =>
+  shouldRereadNumber({ enabled: true, status: 'check', numberRead: false, printingUnsure: true, hasOutcome: true, ...over });
+check('re-read is off unless the flag is on', !reread({ enabled: false }) && reread());
+check('re-read only when a number is missing and the printing is a guess',
+  !reread({ numberRead: true }) && !reread({ printingUnsure: false }) && !reread({ status: 'empty' }));
+check('re-read also tries a pocket with no match at all', reread({ hasOutcome: false, printingUnsure: false, status: 'notfound' }));
 check('network errors read as no connection', pocketErrorText(new TypeError('Network request failed')) === 'No connection.');
 
 async function queueChecks() {

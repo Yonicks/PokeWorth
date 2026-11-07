@@ -40,6 +40,8 @@ export async function readPocket(pocket: PocketImage): Promise<PocketResult> {
     const outcome = parsed.name || parsed.localId ? await matchCard(parsed) : undefined;
     return { ...base, status: classifyPocket(ocr.lines, outcome ?? null), lines: ocr.lines, outcome };
   } catch (error) {
+    // The pocket shows friendly text; developers get the real cause.
+    if (__DEV__) console.warn(`Binder pocket ${pocket.index} failed`, error);
     return { ...base, status: 'error', lines: [], error: pocketErrorText(error) };
   }
 }

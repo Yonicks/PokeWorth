@@ -135,6 +135,31 @@ export function pocketRects(
   return out;
 }
 
+/**
+ * Map a rectangle drawn on a full-screen camera preview to the photo the
+ * camera takes. The preview shows the photo scaled to *cover* the screen and
+ * centred, so the photo's edges are cut off on screen; this undoes that.
+ */
+export function previewRectToPhoto(
+  rect: Rect,
+  screen: { width: number; height: number },
+  photo: { width: number; height: number },
+): Rect {
+  const scale = Math.max(screen.width / photo.width, screen.height / photo.height);
+  const offsetX = (photo.width * scale - screen.width) / 2;
+  const offsetY = (photo.height * scale - screen.height) / 2;
+  return clampRect(
+    {
+      originX: (rect.originX + offsetX) / scale,
+      originY: (rect.originY + offsetY) / scale,
+      width: rect.width / scale,
+      height: rect.height / scale,
+    },
+    photo.width,
+    photo.height,
+  );
+}
+
 /** "Row 2, pocket 3" for screen readers and error messages. */
 export function pocketLabel(p: Pick<PocketRect, 'row' | 'col'>): string {
   return `Row ${p.row + 1}, pocket ${p.col + 1}`;

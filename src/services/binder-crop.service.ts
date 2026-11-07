@@ -17,6 +17,7 @@ import {
   pocketRects,
   type BinderLayout,
   type PocketRect,
+  type Rect,
 } from './binder-grid.model';
 
 export interface PocketImage extends PocketRect {
@@ -26,10 +27,11 @@ export interface PocketImage extends PocketRect {
 
 export interface CropOptions {
   /**
-   * "guide": the page sits inside the camera guide (photos from the binder
-   * camera). "full": the whole photo is the page (imported photos).
+   * Where the page is in the photo: an exact rectangle (mapped from the
+   * on-screen camera guide), "guide" for a centred page-shaped frame, or
+   * "full" when the whole photo is the page (imported photos).
    */
-  frame?: 'guide' | 'full';
+  frame?: 'guide' | 'full' | Rect;
   inset?: number;
 }
 
@@ -50,7 +52,12 @@ export async function cropPockets(
   { frame = 'guide', inset = DEFAULT_INSET }: CropOptions = {},
 ): Promise<PocketImage[]> {
   const { width, height } = await imageSize(uri);
-  const pageFrame = frame === 'guide' ? guideFrame(width, height, layout) : fullFrame(width, height);
+  const pageFrame =
+    frame === 'guide'
+      ? guideFrame(width, height, layout)
+      : frame === 'full'
+        ? fullFrame(width, height)
+        : frame;
   const rects = pocketRects(width, height, layout, pageFrame, inset);
 
   const out: PocketImage[] = [];

@@ -31,8 +31,15 @@ export function isCloudOcrEnabled(): boolean {
 }
 
 async function toJpegDataUrl(uri: string): Promise<string> {
+  // Measure first: only shrink images wider than MAX_WIDTH (a binder pocket is
+  // often narrower, and enlarging it adds bytes, not detail), and pass the
+  // height explicitly, since `height: null` fails on web for freshly cropped
+  // images ("source height is zero or not a number").
+  const original = await ImageManipulator.manipulate(uri).renderAsync();
   const context = ImageManipulator.manipulate(uri);
-  context.resize({ width: MAX_WIDTH, height: null });
+  if (original.width > MAX_WIDTH) {
+    context.resize({ width: MAX_WIDTH, height: Math.round((original.height * MAX_WIDTH) / original.width) });
+  }
   const image = await context.renderAsync();
   const result = await image.saveAsync({ base64: true, compress: 0.7, format: SaveFormat.JPEG });
   if (!result.base64) throw new Error('Could not encode photo');
@@ -57,10 +64,27 @@ export function splitParsedText(response: OcrSpaceResponse): string[] {
     .filter((l) => l.length > 0 && !/^\[note:/i.test(l));
 }
 
-/** Runs cloud OCR on a photo and returns its text lines. Throws on failure. */
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * Runs cloud OCR on a photo and returns its text lines. Throws on failure.
+ * A temporary server error (5xx, seen when several pockets are sent at once)
+ * is retried twice after a short wait; a 429 limit is not.
+ */
 export async function recognizeInCloud(imageUri: string): Promise<string[]> {
   const dataUrl = await toJpegDataUrl(imageUri);
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await sendOnce(dataUrl);
+    } catch (e) {
+      const status = Number(/HTTP (\d{3})/.exec(String(e))?.[1]);
+      if (attempt >= 2 || !(status >= 500)) throw e;
+      await sleep(1500 * (attempt + 1));
+    }
+  }
+}
 
+async function sendOnce(dataUrl: string): Promise<string[]> {
   const body = new FormData();
   body.append('base64Image', dataUrl);
   body.append('OCREngine', '2');

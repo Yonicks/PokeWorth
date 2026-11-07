@@ -11,6 +11,7 @@ import {
   pocketLabel,
   pocketRects,
   POCKET_ASPECT,
+  previewRectToPhoto,
   type Rect,
 } from '../src/services/binder-grid.model';
 import {
@@ -91,6 +92,28 @@ check('a 3×3 pocket from a 12 MP photo is big enough to read (≥ 900 px wide)'
   p9[0].width >= 900, String(p9[0].width));
 check('labels read row then pocket', pocketLabel(p9[5]) === 'Row 2, pocket 3');
 check('layout table matches pocket counts', LAYOUTS['3x3'].cols * LAYOUTS['3x3'].rows === 9 && LAYOUTS['2x2'].label === '4 pockets');
+
+// ── Step 3: camera preview → photo mapping ──────────────────────────────────
+
+// iPhone screen 390 × 844 pt showing a 3024 × 4032 photo with "cover":
+// scale = max(390/3024, 844/4032) = 0.2093; the photo's sides are cut off on screen.
+const screen = { width: 390, height: 844 };
+const photo = { width: 3024, height: 4032 };
+const whole = previewRectToPhoto({ originX: 0, originY: 0, width: 390, height: 844 }, screen, photo);
+check('the whole screen maps to the centre strip of the photo',
+  whole.originY === 0 && whole.height === 4032 && whole.originX > 0 && Math.abs(whole.originX * 2 + whole.width - 3024) <= 2,
+  JSON.stringify(whole));
+const g3 = guideFrame(390, 600, '3x3');
+const onScreen = { ...g3, originY: g3.originY + 80 };
+const inPhoto = previewRectToPhoto(onScreen, screen, photo);
+check('a guide on screen keeps its page shape in the photo',
+  Math.abs(inPhoto.width / inPhoto.height - g3.width / g3.height) < 0.01 && inside(inPhoto, 3024, 4032),
+  JSON.stringify(inPhoto));
+const centre = previewRectToPhoto({ originX: 195, originY: 422, width: 1, height: 1 }, screen, photo);
+check('the screen centre is the photo centre', Math.abs(centre.originX - 1512) <= 5 && Math.abs(centre.originY - 2016) <= 5,
+  JSON.stringify(centre));
+const same = previewRectToPhoto({ originX: 10, originY: 20, width: 100, height: 200 }, { width: 300, height: 400 }, { width: 300, height: 400 });
+check('same size and shape: nothing changes', same.originX === 10 && same.originY === 20 && same.width === 100 && same.height === 200);
 
 // ── Step 2: statuses, queue, error text, name variants ──────────────────────
 

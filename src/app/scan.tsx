@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { ScanModeSwitch } from '@/components/scan-mode-switch';
 import { setLastPhoto } from '@/services/capture-store';
 import { parseOcrLines } from '@/services/card-matcher.service';
 import { isOcrAvailable, recognizeCardText } from '@/services/ocr.service';
@@ -240,6 +241,10 @@ export default function ScanScreen() {
         </Text>
       </View>
 
+      <View style={[styles.modeSwitch, { top: insets.top + 8 }]}>
+        <ScanModeSwitch mode="card" disabled={busy} />
+      </View>
+
       <View style={[styles.controls, { bottom: insets.bottom + 24 }]}>
         <Pressable
           style={styles.cancelButton}
@@ -303,6 +308,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   guideText: { color: '#fff', marginTop: 16, fontSize: 15 },
+  modeSwitch: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
   controls: {
     position: 'absolute',
     left: 0,

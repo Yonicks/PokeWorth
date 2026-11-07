@@ -60,7 +60,7 @@ what a criterion is about; the per-phase "how_to_test" lists say which.
 |---|---|---|---|
 | **Android emulator, development build** | Android Studio → Device Manager → create a Pixel device with a **Google Play** system image → start it → `npx expo run:android` (first run may ask for an Android package name, e.g. `com.yourname.pokeworth`) | Yes (ML Kit) | Real scans, permissions, native UI, TalkBack, release checks |
 | **Chrome (web)** | `npx expo start --web`, then DevTools → device toolbar at 393 × 852 | No, so every scan ends on Manual entry | Layout, navigation, offline and slow-network states, storage, quick visual checks |
-| **Expo Go** | Install Expo Go from the Play Store inside the emulator, then `npx expo start --go` and press `a` | No (Expo Go lacks `expo-text-extractor`) | Fast reloads while changing UI; everything except OCR |
+| **Expo Go** | Install Expo Go from the Play Store inside the emulator, then `npx expo start --go` and press `a` | Cloud fallback only (Expo Go lacks `expo-text-extractor`; photos go to OCR.space) | Fast reloads while changing UI; also the free way to test on an iPhone (`npx expo start --go --tunnel`) |
 
 Emulator tips:
 - **Real cards through the webcam:** Device Manager → edit the device → Show Advanced Settings → Back camera: `Webcam0`.

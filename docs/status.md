@@ -379,3 +379,23 @@ under Recent scans, "No matching cards" offers "Enter details manually".
 | 4. Extra "Done" tap in the photo picker | No change: `expo-image-picker` already uses Android's single-photo picker (`PickVisualMedia`); the "Done" step is the newer Android system picker's own UI. | Checked in `expo-image-picker` source. |
 
 Gates after the fixes: `tsc` PASS, `expo lint` PASS, OCR fixtures 13/13.
+
+### Cloud OCR fallback for Expo Go, iPhone and web (2026-11-07)
+
+Tested on an iPhone in Expo Go (no paid Apple account): Scan went straight to Manual
+entry because Expo Go has no `expo-text-extractor`. To read cards there too:
+
+- New `src/services/cloud-ocr.service.ts`: shrinks the photo to a 1200 px JPEG
+  (`expo-image-manipulator`, included in Expo Go) and sends it to the OCR.space free API
+  (25,000 requests a month, 1 MB limit). Lines go through the same `parseOcrLines`.
+- `src/services/ocr.service.ts`: on-device OCR first; the cloud fallback only when the
+  native module is missing. Cloud failures (network, timeout 20 s, API error) end on
+  Manual entry with the photo, as before.
+- Config: `EXPO_PUBLIC_OCR_SPACE_KEY` in `.env.local` (free key from ocr.space; without
+  it the shared, rate-limited demo key `helloworld` is used). `EXPO_PUBLIC_CLOUD_OCR=off`
+  disables the fallback. The key ships inside the bundle, so it is for testing only.
+- Privacy: in Expo Go and on web the photo leaves the device. Development and release
+  builds keep on-device OCR and never call OCR.space.
+
+Verified: `tsc` PASS, `expo lint` PASS; OCR.space demo key returns text for a card
+photo via curl. On-phone check pending (owner).

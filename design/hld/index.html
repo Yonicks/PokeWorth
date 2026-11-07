@@ -242,7 +242,7 @@ footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--line);
           <tr><td>Mobile</td><td>React Native + Expo + TypeScript</td><td><span class="pill s-built">Yes</span></td></tr>
           <tr><td>Navigation</td><td>Expo Router (<code>src/app/</code>)</td><td><span class="pill s-built">Yes</span></td></tr>
           <tr><td>Camera</td><td><code>expo-camera</code></td><td><span class="pill s-built">Yes</span></td></tr>
-          <tr><td>OCR</td><td><code>expo-text-extractor</code></td><td><span class="pill s-built">Yes</span></td></tr>
+          <tr><td>OCR</td><td><code>expo-text-extractor</code></td><td><span class="pill s-built">Yes</span></td></tr><tr><td>OCR fallback (Expo Go / web)</td><td>OCR.space API + <code>expo-image-manipulator</code></td><td><span class="pill s-built">Yes</span></td></tr>
           <tr><td>Cards and prices</td><td>TCGdex REST API</td><td><span class="pill s-built">Yes</span></td></tr>
           <tr><td>API state and cache</td><td>TanStack Query</td><td><span class="pill s-built">Yes</span></td></tr>
           <tr><td>Small app state</td><td>Zustand, only if needed</td><td><span class="pill s-todo">Not needed yet</span></td></tr>
@@ -250,7 +250,7 @@ footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--line);
         </tbody>
       </table>
     </div>
-    <p style="margin-top:12px"><b>Build note:</b> native OCR needs an Expo development build (<code>eas build --profile development</code> or <code>npx expo run:ios|android</code>). Expo Go cannot load it.</p>
+    <p style="margin-top:12px"><b>Build note:</b> native OCR needs an Expo development build (<code>eas build --profile development</code> or <code>npx expo run:ios|android</code>). Expo Go cannot load it, so in Expo Go (including a free iPhone test) and on web a <b>cloud OCR fallback</b> (OCR.space free API, <code>cloud-ocr.service.ts</code>) reads the card instead; the photo then leaves the device. Turn it off with <code>EXPO_PUBLIC_CLOUD_OCR=off</code>.</p>
     <p><b>Price data:</b> never assume a card or variant has a current price. Show the provider and currency, say clearly when no price exists, and do not imply precision the data does not have.</p>
   </section>
 
@@ -360,7 +360,7 @@ Optional: "layout": "r1" | "r2"   "dryRun": true   "only": ["P2.3"]   "maxTasks"
         <tbody>
           <tr><td>Android emulator · dev build</td><td>Android Studio → Pixel with Google Play image → <code>npx expo run:android</code></td><td>Yes</td><td>Real scans (webcam or imported photos), permissions, TalkBack, release build</td></tr>
           <tr><td>Chrome</td><td><code>npx expo start --web</code>, device toolbar 393 × 852</td><td>No</td><td>Layout, navigation, offline and slow network, storage</td></tr>
-          <tr><td>Expo Go</td><td>Expo Go in the emulator → <code>npx expo start --go</code></td><td>No</td><td>Fast UI iteration; everything except OCR</td></tr>
+          <tr><td>Expo Go</td><td>Expo Go in the emulator or on an iPhone → <code>npx expo start --go --tunnel</code></td><td>Cloud fallback</td><td>Fast UI iteration; free iPhone testing</td></tr>
         </tbody></table></div>
       <p style="margin:8px 0 0;font-size:14px;color:var(--ink-2)">Each phase below has a “How to test” panel with step-by-step checks mapped to its acceptance criteria. Full tips: <code>docs/dev-phases.md</code>.</p>
     </div>

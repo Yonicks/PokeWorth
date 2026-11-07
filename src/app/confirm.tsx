@@ -128,24 +128,31 @@ export default function ConfirmScreen() {
   );
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.header}>
-        Looked for: {parsed.name ?? 'unknown name'}
-        {parsed.localId ? ` · №${parsed.localId}${parsed.setTotal ? `/${parsed.setTotal}` : ''}` : ''}
-      </Text>
+    <View style={styles.flex}>
       <FlatList
+        // The iOS header floats over content; "automatic" insets the list below it.
+        contentInsetAdjustmentBehavior="automatic"
+        contentContainerStyle={styles.container}
         data={candidates}
         keyExtractor={(item) => item.card.id}
         renderItem={renderCandidate}
         ListHeaderComponent={
-          __DEV__ ? (
-            <OcrDebugPanel
-              rawLines={parsed.rawLines}
-              name={parsed.name}
-              localId={parsed.localId}
-              setTotal={parsed.setTotal}
-            />
-          ) : undefined
+          <>
+            <Text style={styles.header}>
+              Looked for: {parsed.name ?? 'unknown name'}
+              {parsed.localId
+                ? ` · №${parsed.localId}${parsed.setTotal ? `/${parsed.setTotal}` : ''}`
+                : ''}
+            </Text>
+            {__DEV__ ? (
+              <OcrDebugPanel
+                rawLines={parsed.rawLines}
+                name={parsed.name}
+                localId={parsed.localId}
+                setTotal={parsed.setTotal}
+              />
+            ) : null}
+          </>
         }
         ListEmptyComponent={
           <View style={styles.empty}>
@@ -167,7 +174,8 @@ export default function ConfirmScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16 },
+  flex: { flex: 1 },
+  container: { padding: 16 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24, gap: 12 },
   empty: { alignItems: 'center', gap: 16 },
   header: { fontSize: 15, color: '#8e8e93', marginBottom: 12 },

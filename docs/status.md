@@ -399,3 +399,35 @@ entry because Expo Go has no `expo-text-extractor`. To read cards there too:
 
 Verified: `tsc` PASS, `expo lint` PASS; OCR.space demo key returns text for a card
 photo via curl. On-phone check pending (owner).
+
+## Collector roadmap (2026-11-07)
+
+Plan: `design/plans/collector-roadmap.html` (published as the "PokeWorth Collector
+Roadmap" artifact). It brings the portfolio, card detail, search and overview features
+from five Collectr reference screenshots into PokeWorth's own navy-and-gold design.
+
+### Decisions (owner, 2026-11-07)
+
+1. **Price history:** daily snapshots on the device first (P7). A scheduled server job
+   only if charts feel too thin later.
+2. **Graded cards:** manual entries (grader, grade, cert number, own value) plus the eBay
+   sold-listings link. No graded market prices or population until a data source exists.
+3. **Tab bar / P3 layout:** Home, Search, centre Scan button, Portfolio, Profile. This
+   replaces the open r1 / r2 choice; Shop and Social are out of scope.
+4. **Portfolios:** storage v1 supports several portfolios from the start; the UI shows
+   "Main" until the user creates another.
+
+### Step 1 · Tabs and tokens (branch `feat/collector-tabs`)
+
+- `src/theme/tokens.ts`: colours, spacing, radius and type from `design/home-spec.md` §2.
+- `src/components/icons.tsx`: line icons drawn with `react-native-svg` (added with
+  `npx expo install`; included in Expo Go).
+- `src/app/(tabs)/`: Home (scan button, Search Manually, recent scans), Search (name or
+  number, camera button, 2-column grid), Portfolio (placeholder until step 4), Profile
+  (version, data sources, disclaimer). The centre Scan button opens `/scan` above the tabs.
+- Root layout is dark-only with a light status bar; Confirm and Card Details text colours
+  fixed for the dark theme.
+
+Verified in Chrome at 375 × 812: tabs switch, centre button opens Scan, Search for
+"Charizard" returns a grid, Card Details reads on the dark theme. `tsc` PASS,
+`expo lint` PASS. On-phone check pending (owner).

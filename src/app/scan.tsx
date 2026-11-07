@@ -55,7 +55,7 @@ export default function ScanScreen() {
   // so every state needs its own way out.
   const goBack = () => {
     if (router.canGoBack()) router.back();
-    else router.replace('/');
+    else router.replace('/(tabs)/index');
   };
 
   const enterManually = () =>

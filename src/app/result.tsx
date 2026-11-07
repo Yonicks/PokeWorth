@@ -12,6 +12,7 @@ import {
 import { useCard } from '@/hooks/use-cards';
 import { addRecentScan } from '@/services/storage.service';
 import { cardImageUrl, extractDisplayPrices } from '@/services/tcgdex.service';
+import { colors } from '@/theme/tokens';
 
 export default function ResultScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -114,9 +115,15 @@ const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
   muted: { color: '#8e8e93', fontSize: 15, textAlign: 'center' },
   cardImage: { width: '100%', aspectRatio: 63 / 88, borderRadius: 12, marginBottom: 16 },
-  name: { fontSize: 24, fontWeight: '700' },
-  meta: { fontSize: 15, color: '#8e8e93', marginTop: 4 },
-  sectionTitle: { fontSize: 18, fontWeight: '600', marginTop: 24, marginBottom: 8 },
+  name: { fontSize: 24, fontWeight: '700', color: colors.textPrimary },
+  meta: { fontSize: 15, color: colors.textSecondary, marginTop: 4 },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginTop: 24,
+    marginBottom: 8,
+    color: colors.textPrimary,
+  },
   noPriceBox: {
     backgroundColor: 'rgba(142,142,147,0.12)',
     borderRadius: 10,
@@ -128,11 +135,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#c7c7cc',
+    borderBottomColor: colors.border,
   },
   priceInfo: { flex: 1 },
-  priceLabel: { fontSize: 16, fontWeight: '500' },
-  priceSource: { fontSize: 13, color: '#8e8e93', marginTop: 2 },
-  priceAmount: { fontSize: 17, fontWeight: '700' },
+  priceLabel: { fontSize: 16, fontWeight: '500', color: colors.textPrimary },
+  priceSource: { fontSize: 13, color: colors.textTertiary, marginTop: 2 },
+  priceAmount: { fontSize: 17, fontWeight: '700', color: colors.price },
   disclaimer: { fontSize: 13, color: '#8e8e93', marginTop: 24, lineHeight: 18 },
 });

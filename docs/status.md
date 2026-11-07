@@ -585,4 +585,24 @@ user confirms.
 4. **Test photos:** owner sends 3 iPhone photos of real binder pages (easy, glare, slight
    angle) for step 0; used for testing only, kept out of the repo unless agreed.
 
-Status: waiting for the step 0 photos. Nothing built yet.
+Status: waiting for the step 0 photos.
+
+### Step 1 · Pocket grid and cropping (branch `feat/binder-scan`)
+
+- `src/services/binder-grid.model.ts` (pure): layouts 3×3, 2×2 (enabled) and 3×4 (later),
+  pocket shape 66 × 92 mm, `guideFrame` (largest page-shaped rectangle centred in a photo
+  with a 5 % margin; the step 3 camera guide uses the same function), `pocketRects` (row
+  by row, 4 % inset per edge by default, whole pixels, clamped to the photo).
+- `src/services/binder-crop.service.ts`: crops every pocket with `expo-image-manipulator`
+  (one context per crop), saved as full-resolution JPEG; "guide" frame for camera photos,
+  "full" for imported ones.
+- `scripts/binder-fixtures.ts`: 20 offline checks (no overlap, inside the photo, reading
+  order, inset, guide shape and margin, clamping, ≥ 900 px pocket width on a 12 MP photo).
+- `src/app/scan.tsx`: back fallback is `router.replace('/')` again; the typed routes now
+  list Home as `/` (the earlier `/(tabs)/index` came from stale generated types).
+
+Verified: binder fixtures 20/20; in the Chrome web build a temporary check screen
+(deleted afterwards) cropped a 600 × 825 card image into 9 pieces of 184 × 253 that
+match the model and show different parts of the card. `tsc` PASS, `expo lint` PASS, all
+other fixtures pass. The inset and pocket shape are first guesses until step 0 measures
+real pages.

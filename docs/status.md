@@ -568,3 +568,21 @@ Not exercised in the browser: the eBay grade link (popups are blocked in the tes
 On-phone check pending (owner).
 
 All six collector-roadmap steps are built on `feat/collector-tabs`.
+
+## Binder page scan (planned 2026-11-07)
+
+Plan: `design/plans/binder-scan.html` (published as the "Binder Page Scan" artifact).
+Photograph one binder page; PokeWorth cuts it into pockets, reads and matches each one,
+and shows a review grid (Sure / Check / Not found / Empty). Nothing is added until the
+user confirms.
+
+### Decisions (owner, 2026-11-07)
+
+1. **Layouts:** 3×3 and 2×2 first; 3×4 later if used.
+2. **Reading option:** decided by step 0. If per-pocket (A) and whole-page with word
+   positions (B) do equally well, B; otherwise A.
+3. **Unsure matches:** "Check" pockets start unticked; only "Sure" pockets start ticked.
+4. **Test photos:** owner sends 3 iPhone photos of real binder pages (easy, glare, slight
+   angle) for step 0; used for testing only, kept out of the repo unless agreed.
+
+Status: waiting for the step 0 photos. Nothing built yet.

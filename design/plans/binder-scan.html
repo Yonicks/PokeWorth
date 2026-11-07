@@ -1,0 +1,325 @@
+<title>Binder Page Scan</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column — user flow with phone sketches, then how detection works, risks, build steps, decisions. */
+:root {
+  /* Dark-first: matches the PokeWorth app (design/home-spec.md §2) and the Collector Roadmap page. */
+  --bg: #031229;
+  --surface: #0a1a30;
+  --raised: #12243b;
+  --line: #1e3150;
+  --fg: #fefefe;
+  --fg-2: #cdd9ec;
+  --fg-3: #a9b9d3;
+  --gold: #fdcb56;
+  --gold-text: #fedf4e;
+  --ok: #5fd3a8;
+  --warn: #f6b35b;
+  --no: #f07c6c;
+  --font-display: "Fredoka", "Nunito", ui-rounded, system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #f3f5fa; --surface: #ffffff; --raised: #e8edf6; --line: #cfd8e8;
+    --fg: #0b1830; --fg-2: #2c3d5c; --fg-3: #56688a;
+    --gold: #c98a00; --gold-text: #9a6a00;
+    --ok: #138a63; --warn: #a96400; --no: #c0392b;
+    color-scheme: light;
+  }
+}
+:root[data-theme="light"] {
+  --bg: #f3f5fa; --surface: #ffffff; --raised: #e8edf6; --line: #cfd8e8;
+  --fg: #0b1830; --fg-2: #2c3d5c; --fg-3: #56688a;
+  --gold: #c98a00; --gold-text: #9a6a00;
+  --ok: #138a63; --warn: #a96400; --no: #c0392b;
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font: 15px/1.6 var(--font-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 40px 72px;
+}
+.wrap { max-width: 1040px; margin: 0 auto; display: grid; gap: 56px; }
+h1, h2, h3 { font-family: var(--font-display); font-weight: 600; text-wrap: balance; margin: 0; line-height: 1.2; }
+h1 { font-size: clamp(30px, 5vw, 44px); }
+h1 span { color: var(--gold-text); }
+h2 { font-size: 26px; }
+h3 { font-size: 19px; }
+p { margin: 0; max-width: 68ch; color: var(--fg-2); }
+ul { margin: 0; padding-left: 18px; color: var(--fg-2); }
+li + li { margin-top: 4px; }
+.eyebrow { font: 500 12px/1 var(--font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--fg-3); }
+code { font-family: var(--font-mono); font-size: 13px; }
+a { color: var(--gold-text); }
+header { display: grid; gap: 16px; }
+.meta { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { font: 500 12px/1 var(--font-mono); padding: 7px 10px; border-radius: 999px; border: 1px solid var(--line); color: var(--fg-2); background: var(--surface); }
+section { display: grid; gap: 20px; }
+.lead { display: grid; gap: 8px; }
+
+/* User flow: phone sketch + steps */
+.flow { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 24px; }
+.stage { display: grid; gap: 12px; align-content: start; min-width: 0; }
+.stage h3 { display: flex; gap: 10px; align-items: baseline; }
+.stage h3 b { font: 600 24px/1 var(--font-display); color: var(--gold-text); }
+.stage p { font-size: 14px; }
+
+.phone { width: 220px; max-width: 100%; aspect-ratio: 9 / 18; border-radius: 26px; border: 1px solid var(--line); background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 70%, #001643) 0%, var(--bg) 70%); padding: 14px 12px 10px; display: flex; flex-direction: column; gap: 7px; overflow: hidden; }
+.phone .bar { height: 7px; border-radius: 4px; background: var(--raised); }
+.phone .bar.w40 { width: 40%; } .phone .bar.w60 { width: 60%; } .phone .bar.w80 { width: 80%; }
+.phone .bar.gold { background: var(--gold); }
+.phone .row { display: flex; gap: 6px; align-items: center; }
+.phone .pill { flex: 1; height: 20px; border-radius: 10px; background: var(--raised); border: 1px solid var(--line); font: 500 9px/18px var(--font-mono); color: var(--fg-3); text-align: center; }
+.phone .pill.on { background: var(--gold); color: #0b0b0d; border-color: var(--gold); }
+.phone .small { font: 500 9px/1.3 var(--font-mono); color: var(--fg-3); text-align: center; }
+.phone .cta { height: 30px; border-radius: 9px; background: var(--gold); display: grid; place-items: center; font: 600 10px/1 var(--font-body); color: #0b0b0d; }
+
+/* Camera with 3x3 guide */
+.viewfinder { flex: 1; border-radius: 10px; background: repeating-linear-gradient(135deg, #1a2a44 0 6px, #16253d 6px 12px); display: grid; place-items: center; }
+.guide { width: 86%; aspect-ratio: 3 / 4; border: 2px solid var(--gold); border-radius: 6px; display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); }
+.guide span { border: 1px dashed color-mix(in srgb, var(--gold) 55%, transparent); }
+.shutter { width: 40px; height: 40px; border-radius: 50%; border: 3px solid var(--fg); margin: 2px auto 0; background: var(--gold); }
+
+/* Reading progress */
+.pocketgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+.pocket { aspect-ratio: 63 / 88; border-radius: 4px; background: var(--raised); border: 1px solid var(--line); position: relative; }
+.pocket.art { background: linear-gradient(135deg, #e9b949, #d8573a 55%, #3a6fb6); }
+.pocket.art2 { background: linear-gradient(135deg, #3b4f8a, #7c4fb0); }
+.pocket.art3 { background: linear-gradient(135deg, #d9c34a, #5b7f3a); }
+.pocket.empty { background: transparent; border-style: dashed; }
+.pocket i { position: absolute; left: 3px; right: 3px; bottom: 3px; height: 9px; border-radius: 3px; }
+.pocket i.sure { background: var(--ok); }
+.pocket i.check { background: var(--warn); }
+.pocket i.miss { background: var(--no); }
+.pocket.reading { outline: 2px solid var(--gold); outline-offset: -2px; }
+.progress { height: 6px; border-radius: 3px; background: var(--raised); overflow: hidden; }
+.progress b { display: block; height: 100%; width: 44%; background: var(--gold); }
+
+.legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 13px; color: var(--fg-2); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+
+/* Tables */
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; }
+table { border-collapse: collapse; width: 100%; min-width: 600px; font-size: 14px; }
+th, td { text-align: left; vertical-align: top; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+th { font: 500 11px/1.2 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--fg-3); background: var(--surface); }
+tr:last-child td { border-bottom: 0; }
+td:first-child { font-weight: 600; color: var(--fg); }
+td { color: var(--fg-2); }
+.tag { display: inline-block; font: 500 11px/1 var(--font-mono); padding: 4px 7px; border-radius: 5px; border: 1px solid currentColor; white-space: nowrap; }
+.tag.ok { color: var(--ok); } .tag.warn { color: var(--warn); } .tag.no { color: var(--no); }
+
+/* Pipeline */
+.pipe { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; counter-reset: p; }
+.pipe div { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; display: grid; gap: 4px; counter-increment: p; min-width: 0; }
+.pipe div::before { content: counter(p); font: 600 18px/1 var(--font-display); color: var(--gold-text); }
+.pipe strong { font-size: 14px; }
+.pipe span { font-size: 13px; color: var(--fg-3); }
+.pipe .new { border-color: var(--gold); }
+
+.steps { list-style: none; margin: 0; padding: 0; display: grid; counter-reset: step; }
+.steps li { counter-increment: step; display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 16px; padding: 16px 0; border-top: 1px solid var(--line); margin: 0; }
+.steps li::before { content: counter(step, decimal-leading-zero); font: 600 22px/1 var(--font-display); color: var(--gold-text); }
+.steps li:first-child::before { content: "00"; }
+.steps li div { display: grid; gap: 6px; min-width: 0; }
+.steps li p { font-size: 14px; }
+.steps .why { color: var(--fg-3); font-size: 13px; }
+
+.decisions { display: grid; gap: 12px; }
+.decision { background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--gold); border-radius: 8px; padding: 14px 16px; display: grid; gap: 6px; }
+.decision p { font-size: 14px; }
+.decision .rec { color: var(--fg); }
+footer p { font-size: 13px; color: var(--fg-3); }
+</style>
+
+<div class="wrap">
+
+<header>
+  <div class="eyebrow">Feature plan · step 1 built · waiting for test photos</div>
+  <h1>Binder <span>Page Scan</span></h1>
+  <p>Take one photo of a binder page. PokeWorth splits it into pockets, reads every card, and shows you a review grid with what it found. You fix anything it got wrong, then add all the cards to your portfolio in one tap. Nothing is added until you confirm.</p>
+  <div class="meta">
+    <span class="chip">7 Nov 2026</span>
+    <span class="chip">Decisions: all four accepted</span>
+    <span class="chip">Builds on: single-card scan, matcher, portfolio</span>
+    <span class="chip">Works in Expo Go</span>
+    <span class="chip">No new paid services</span>
+  </div>
+</header>
+
+<section>
+  <div class="lead">
+    <div class="eyebrow">For you</div>
+    <h2>How it works on your phone</h2>
+  </div>
+  <div class="flow">
+    <div class="stage">
+      <div class="phone" aria-hidden="true">
+        <div class="row"><span class="pill">Card</span><span class="pill on">Binder page</span></div>
+        <div class="row"><span class="pill">2×2</span><span class="pill on">3×3</span><span class="pill">3×4</span></div>
+        <div class="viewfinder"><div class="guide"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div></div>
+        <div class="small">Fit the page inside the gold frame</div>
+        <div class="shutter"></div>
+      </div>
+      <h3><b>1</b>Photograph the page</h3>
+      <p>On the Scan screen, switch to <strong>Binder page</strong> and pick the pocket layout: 9 pockets (3×3) is standard, and there are 4 and 12 too. A gold grid shows where to line up the page. You can also import a photo you already took.</p>
+    </div>
+
+    <div class="stage">
+      <div class="phone" aria-hidden="true">
+        <div class="bar w60"></div>
+        <div class="small">Reading pocket 4 of 9…</div>
+        <div class="progress"><b></b></div>
+        <div class="pocketgrid">
+          <div class="pocket art"><i class="sure"></i></div>
+          <div class="pocket art2"><i class="sure"></i></div>
+          <div class="pocket art3"><i class="check"></i></div>
+          <div class="pocket reading"></div>
+          <div class="pocket"></div>
+          <div class="pocket"></div>
+          <div class="pocket"></div>
+          <div class="pocket"></div>
+          <div class="pocket"></div>
+        </div>
+        <div class="small">You can cancel at any time</div>
+      </div>
+      <h3><b>2</b>PokeWorth reads each pocket</h3>
+      <p>The photo is cut into one piece per pocket. Each piece goes through the same reading and matching as a single scan, three at a time. Pockets fill in as they finish, and empty pockets are skipped.</p>
+    </div>
+
+    <div class="stage">
+      <div class="phone" aria-hidden="true">
+        <div class="row"><span class="bar w60"></span><span style="flex:1"></span><span class="small">7 found</span></div>
+        <div class="pocketgrid">
+          <div class="pocket art"><i class="sure"></i></div>
+          <div class="pocket art2"><i class="sure"></i></div>
+          <div class="pocket art3"><i class="check"></i></div>
+          <div class="pocket art"><i class="sure"></i></div>
+          <div class="pocket art2"><i class="sure"></i></div>
+          <div class="pocket"><i class="miss"></i></div>
+          <div class="pocket art3"><i class="sure"></i></div>
+          <div class="pocket art"><i class="sure"></i></div>
+          <div class="pocket empty"></div>
+        </div>
+        <div class="small">Tap a pocket to change it</div>
+        <div class="cta">Add 7 cards to Main</div>
+      </div>
+      <h3><b>3</b>Check the grid, then add</h3>
+      <p>The review grid mirrors your page. Each pocket shows the card it found and a colour. Tap a pocket to pick another match, search by hand, change the printing or skip it. One button adds every ticked card.</p>
+    </div>
+  </div>
+
+  <div class="legend">
+    <span><i style="background:var(--ok)"></i>Sure: ticked for you</span>
+    <span><i style="background:var(--warn)"></i>Check: likely, but you tick it</span>
+    <span><i style="background:var(--no)"></i>Not found: search or skip</span>
+    <span><i style="border:1px dashed var(--fg-3)"></i>Empty pocket</span>
+  </div>
+  <p>"Sure" uses the same rule as a single scan: the best match scores at least 85% and leads the next one by 15 points. That means the name, number, set size and attacks mostly agree. Anything less is never added without your tap.</p>
+</section>
+
+<section>
+  <div class="lead">
+    <div class="eyebrow">Under the hood</div>
+    <h2>How detection works</h2>
+    <p>Most of this already exists from the single-card scan. The new parts are cutting the page into pockets, running many pockets at once, and the review grid. They're outlined in gold.</p>
+  </div>
+  <div class="pipe">
+    <div><strong>Photo</strong><span>Camera or imported image, kept at full size (not the 1200 px the single scan uses)</span></div>
+    <div class="new"><strong>Cut into pockets</strong><span>The chosen grid, with a small inset so pocket edges and sleeve seams are left out. Uses the Expo Go image tool's crop.</span></div>
+    <div class="new"><strong>Empty check</strong><span>A pocket with almost no text is marked empty and not matched</span></div>
+    <div><strong>Read text</strong><span>On-device OCR in a development build; the free cloud OCR in Expo Go and on web</span></div>
+    <div><strong>Match</strong><span>Existing matcher: name with fallbacks, number, set size, attacks</span></div>
+    <div class="new"><strong>Review grid</strong><span>Sure / Check / Not found per pocket; you fix, then add all at once</span></div>
+  </div>
+
+  <h3>Two ways to read the page</h3>
+  <p>The free cloud OCR allows 500 requests a day per address and 1 MB per image. It can also return where each word sits on the image. That gives two options, and real binder photos should decide between them.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Option</th><th>Requests per 9-pocket page</th><th>Strength</th><th>Weakness</th></tr></thead>
+    <tbody>
+      <tr><td>A · One request per pocket</td><td>9 (about 55 pages a day in Expo Go)</td><td>Each pocket is sent at good resolution, so the small <code>4/102</code> number stays readable</td><td>Slower, and uses the daily limit faster. A development build reads on the phone with no limit.</td></tr>
+      <tr><td>B · One request per page, with word positions</td><td>1</td><td>Fast and cheap: words are sorted into pockets by where they sit</td><td>The whole page must fit in 1 MB, so the collector numbers may be too small to read</td></tr>
+      <tr><td>Hybrid · B, then A where needed</td><td>1 + pockets missing a number</td><td>Cheap when the photo is sharp, accurate when it isn't</td><td>More code. Only worth it if A or B alone falls short.</td></tr>
+    </tbody>
+  </table></div>
+  <p>Matching also calls the card catalog for each pocket: one name search, plus up to 8 card lookups to compare attacks. TCGdex is free and the results are cached, but a full page makes a few dozen requests. Step 0 measures how long that really takes.</p>
+</section>
+
+<section>
+  <div class="lead">
+    <div class="eyebrow">Risks</div>
+    <h2>What can go wrong, and what the plan does about it</h2>
+  </div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Problem</th><th>Effect</th><th>What we do</th></tr></thead>
+    <tbody>
+      <tr><td>Glare on sleeves</td><td>Text under the shine can't be read</td><td>Tip on the camera screen ("tilt slightly away from the light"). The pocket shows Check or Not found, never a wrong Sure.</td></tr>
+      <tr><td>Page photographed at an angle</td><td>Grid lines miss the pockets</td><td>The gold guide frame makes you shoot straight on. Automatic straightening needs a native image library, so it waits for a development build.</td></tr>
+      <tr><td>Card sits low or crooked in its pocket</td><td>Part of the card falls outside its piece</td><td>A small inset on each piece, plus a reading margin; step 0 tunes both on real pages</td></tr>
+      <tr><td>Same card twice on a page</td><td>Two pockets, one card</td><td>Added once with quantity 2</td></tr>
+      <tr><td>Card already in your portfolio</td><td>Unclear whether to add more</td><td>The pocket says "You own 1", and adding raises the quantity, just like the + button</td></tr>
+      <tr><td>Non-English or back-facing cards</td><td>No match</td><td>Not found: you search by hand or skip it</td></tr>
+      <tr><td>Privacy</td><td>In Expo Go and on web the pocket images go to the OCR service</td><td>Same as a single scan today. A development build keeps everything on the phone.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <div class="lead">
+    <div class="eyebrow">Build</div>
+    <h2>Build steps</h2>
+    <p>Each step ends with tests or something you can try. Step 0 needs your real binder photos.</p>
+  </div>
+  <ol class="steps">
+    <li><div><h3>Try it on real pages</h3><p>You send 3 photos of real binder pages: one easy, one with glare, one at a slight angle. I run options A and B on them outside the app and record, pocket by pocket, whether the right card came out on top, plus the time and request count.</p><p class="why">This decides the OCR option and the pocket inset before any screens are built.</p></div></li>
+    <li><div><h3>Pocket grid and cropping <span class="tag ok">built</span></h3><p>A pure layout model for 2×2, 3×3 and 3×4 that turns a photo size into pocket rectangles with an inset. A crop service on top of it. Offline tests for the maths.</p></div></li>
+    <li><div><h3>Batch reading</h3><p>A queue that reads and matches pockets three at a time, with progress, cancel, retry for failed pockets and the empty check. Each pocket gets Sure, Check, Not found or Empty. Tested with recorded OCR text from step 0.</p></div></li>
+    <li><div><h3>Binder camera</h3><p>A Card / Binder page switch on the Scan screen, the layout picker, the gold grid guide, the glare tip and photo import. Also reachable from the Portfolio tab.</p></div></li>
+    <li><div><h3>Review grid</h3><p>Pockets laid out like your page, each with a status colour. Tapping a pocket shows the top 3 matches, search by hand, the printing choice, or skip. Sure pockets start ticked; Check pockets you tick yourself.</p></div></li>
+    <li><div><h3>Add to portfolio</h3><p>A tested "add many" in the collection model: duplicates on a page are merged, cards you already own have their quantity raised, and it ends with a summary ("Added 7 cards, $412.30") and <strong>Scan next page</strong>.</p></div></li>
+  </ol>
+
+  <div class="table-wrap"><table>
+    <thead><tr><th>Done when</th><th>Check</th></tr></thead>
+    <tbody>
+      <tr><td>A clear 9-pocket photo finds at least 7 of 9 cards as Sure or Check with the right card on top</td><td>Step 0 photos, re-run after every step</td></tr>
+      <tr><td>No card is added without either a Sure match or your tap</td><td>Collection tests + review-screen check</td></tr>
+      <tr><td>Empty pockets are never matched to a card</td><td>Photo with 2 empty pockets</td></tr>
+      <tr><td>Cancel stops new requests right away and adds nothing</td><td>Manual check in Chrome and Expo Go</td></tr>
+      <tr><td>Two copies of one card on a page are added as quantity 2</td><td>Collection tests</td></tr>
+      <tr><td>A page reads in Expo Go on iPhone and in Chrome</td><td>Owner on the phone; Chrome at 375 × 812</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <div class="lead">
+    <div class="eyebrow">Decisions</div>
+    <h2>Decisions</h2>
+    <p>You accepted all four recommendations on 7 Nov 2026. Step 0 starts when your three binder photos arrive.</p>
+  </div>
+  <div class="decisions">
+    <div class="decision"><h3>1 · Pocket layouts</h3><p>Most binders use 9-pocket pages; 4-pocket pages are common for big cards, and 12-pocket for mini binders.</p><p class="rec">Recommendation: 3×3 and 2×2 first; add 3×4 if you use it.</p></div>
+    <div class="decision"><h3>2 · Reading option</h3><p>A (per pocket), B (whole page) or the hybrid. The trade-off is between the daily limit and accuracy.</p><p class="rec">Recommendation: decide after step 0. If both do equally well, take B for its lower request count; otherwise take A.</p></div>
+    <div class="decision"><h3>3 · Unsure matches</h3><p>Pockets marked Check could start ticked, so one tap adds everything, or unticked, so you confirm each.</p><p class="rec">Recommendation: unticked. Only Sure matches start ticked, as you asked to confirm the cards first.</p></div>
+    <div class="decision"><h3>4 · Your test photos</h3><p>Step 0 needs 3 photos of real pages from your binder, taken with your iPhone.</p><p class="rec">Send them in this chat when you're ready; they're used for testing only and kept out of the repo unless you say otherwise.</p></div>
+  </div>
+</section>
+
+<footer>
+  <p>Saved as <code>design/plans/binder-scan.html</code>. Limits checked on 7 Nov 2026: OCR.space free plan allows 25,000 requests a month, 500 a day per IP and 1 MB per image, and returns word positions with <code>isOverlayRequired=true</code>. <code>expo-image-manipulator</code> (crop) is included in Expo Go on SDK 58. Speeds and accuracy here are estimates until step 0 measures them.</p>
+</footer>
+
+</div>

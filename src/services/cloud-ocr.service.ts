@@ -101,7 +101,11 @@ async function sendOnce(dataUrl: string): Promise<string[]> {
       body,
       signal: controller.signal,
     });
-    if (!res.ok) throw new Error(`Cloud OCR HTTP ${res.status}`);
+    if (!res.ok) {
+      // OCR.space says how long to wait when the free limit is hit: {"retryAfter": 662}.
+      const wait = Number((await res.json().catch(() => null))?.retryAfter);
+      throw new Error(`Cloud OCR HTTP ${res.status}${wait > 0 ? ` retry ${Math.round(wait)}` : ''}`);
+    }
     return splitParsedText((await res.json()) as OcrSpaceResponse);
   } finally {
     clearTimeout(timer);

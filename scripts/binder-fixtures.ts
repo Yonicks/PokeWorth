@@ -32,6 +32,7 @@ import { addMany, emptyCollection, quantityOf, type EntryInput } from '../src/se
 import type { CardBrief } from '../src/types/card';
 import {
   classifyPocket,
+  isLimitError,
   type PocketStatus,
   pocketErrorText,
   runQueue,
@@ -259,6 +260,9 @@ check('an unsure match is Check and starts unticked (decision 3)',
 const sum = summarize(['sure', 'sure', 'check', 'notfound', 'empty', 'error']);
 check('page summary counts every status', sum.sure === 2 && sum.found === 3 && sum.empty === 1 && sum.error === 1);
 check('rate limit errors read as a limit', /limit/i.test(pocketErrorText(new Error('Cloud OCR HTTP 429'))));
+check('the limit text says how long to wait', pocketErrorText(new Error('Cloud OCR HTTP 429 retry 662')) === 'Reading limit reached. Try again in about 12 min.',
+  pocketErrorText(new Error('Cloud OCR HTTP 429 retry 662')));
+check('the limit is recognised so reading can stop', isLimitError(pocketErrorText(new Error('Cloud OCR HTTP 429'))) && !isLimitError('No connection.') && !isLimitError(undefined));
 check('network errors read as no connection', pocketErrorText(new TypeError('Network request failed')) === 'No connection.');
 
 async function queueChecks() {

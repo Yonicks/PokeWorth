@@ -126,6 +126,8 @@ export default function BinderReadScreen() {
       onResult: (r) => setResults((prev) => ({ ...prev, [r.index]: r })),
     });
     // Reading is over: start the review from what was read (later retries keep the user's choices).
+    // Pockets never started (stopped early, e.g. at the reading limit) show as errors too.
+    setResults((prev) => ({ ...prev, ...Object.fromEntries(all.map((r) => [r.index, r])) }));
     setReview(initReview(all));
     setPhase(ac.signal.aborted ? 'cancelled' : 'done');
   }, []);

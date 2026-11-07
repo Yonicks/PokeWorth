@@ -32,10 +32,23 @@ export function startsTicked(status: PocketStatus): boolean {
   return status === 'sure';
 }
 
+/** Whether a pocket's error text is the OCR reading limit (every later pocket would fail too). */
+export function isLimitError(text: string | undefined): boolean {
+  return !!text && /reading limit/i.test(text);
+}
+
+/** Shown for pockets never read because reading stopped early. */
+export const NOT_READ_TEXT = 'Not read yet. Tap Retry.';
+
 /** A short reason for a failed pocket, in words the user understands. */
 export function pocketErrorText(error: unknown): string {
   const msg = error instanceof Error ? error.message : String(error);
-  if (/\b429\b|rate|limit/i.test(msg)) return 'Reading limit reached. Try again in a few minutes.';
+  if (/\b429\b|rate|limit/i.test(msg)) {
+    const seconds = Number(/retry (\d+)/.exec(msg)?.[1]);
+    return seconds > 0
+      ? `Reading limit reached. Try again in about ${Math.max(1, Math.ceil(seconds / 60))} min.`
+      : 'Reading limit reached. Try again in a few minutes.';
+  }
   if (/abort|timeout/i.test(msg)) return 'Reading took too long.';
   if (/network|fetch|failed to fetch/i.test(msg)) return 'No connection.';
   return 'Could not read this pocket.';

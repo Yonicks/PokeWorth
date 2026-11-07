@@ -8,6 +8,8 @@
 import { cropBottomStrip, type PocketImage } from './binder-crop.service';
 import {
   classifyPocket,
+  isLimitError,
+  NOT_READ_TEXT,
   pocketErrorText,
   runQueue,
   type PocketStatus,
@@ -98,13 +100,32 @@ export async function readPocket(pocket: PocketImage): Promise<PocketResult> {
  * Read every pocket, three at a time. `onResult` fires as each pocket
  * finishes so the screen can fill in; cancel with `signal`.
  */
-export function readPockets(
+export async function readPockets(
   pockets: PocketImage[],
   options: { signal?: AbortSignal; onResult?: (r: PocketResult) => void; concurrency?: number } = {},
-): Promise<(PocketResult | undefined)[]> {
-  return runQueue(pockets, readPocket, {
+): Promise<PocketResult[]> {
+  // Stop on the OCR reading limit: every later pocket would fail the same way.
+  const limit = new AbortController();
+  options.signal?.addEventListener('abort', () => limit.abort());
+  const results = await runQueue(pockets, readPocket, {
     concurrency: options.concurrency ?? 3,
-    signal: options.signal,
-    onResult: (r) => options.onResult?.(r),
+    signal: limit.signal,
+    onResult: (r) => {
+      if (r.status === 'error' && isLimitError(r.error)) limit.abort();
+      options.onResult?.(r);
+    },
   });
+  // Pockets never started (stopped early) are reported, so Retry can read them.
+  return results.map(
+    (r, i) =>
+      r ?? {
+        index: pockets[i].index,
+        row: pockets[i].row,
+        col: pockets[i].col,
+        uri: pockets[i].uri,
+        status: 'error' as const,
+        lines: [],
+        error: NOT_READ_TEXT,
+      },
+  );
 }

@@ -539,4 +539,32 @@ chart draws with guides $902.50 / $987.13 and +9.4 % 1M; EUR setting gives €5,
 history 24/24, iOS bundle builds. On-phone check pending (owner).
 
 Known limits: past days' portfolio values are converted at today's rate; the per-card
-"Adding to" total on Card Details is not converted.
+"Adding to" total on Card Details is not converted (fixed in step 6).
+
+### Step 6 · Graded cards (new P8)
+
+- Collection model: graded copies are their own entries (`portfolio|card|graded:<slot>`,
+  quantity 1) with grader, grade and optional cert number; condition reads e.g. "PSA 10".
+  The value is the user's own ("Your value"); the daily price refresh never overwrites
+  it, and moving a graded copy never merges it with raw copies. Same grader + cert
+  number cannot be added twice. CSV gains Grader, Grade and Cert columns.
+- `src/components/graded-form.tsx`: printing, grader (PSA, BGS, CGC, SGC, TAG, ACE),
+  grade (10 to 1 with halves), cert number, value in USD or EUR, inline errors, and
+  "See sold PSA 10 copies on eBay" for the chosen grade (`src/services/links.ts`).
+- Card Details "Adding to" panel: Ungraded steppers, Graded list with two-tap remove,
+  "Add a graded card"; its total now includes graded values and uses the display
+  currency.
+- Portfolio tiles show the grade in gold and "Your value".
+- No graded market prices, population or gem rate: there is still no free source
+  (decision 2).
+- `scripts/collection-fixtures.ts`: 13 more checks (34 in all).
+
+Verified in Chrome at 375 × 812 on `base1-4`: cert "1" is rejected with "Use the 4–20
+letters or digits from the label."; PSA 10, cert 12345678, $37,587.74 is added and shows
+"Cert 12345678 · $37,587.74 your value"; the panel total becomes $43,457.75; the
+Portfolio shows the PSA 10 tile and $43,457.75 · 4 cards. `tsc` PASS, `expo lint` PASS,
+fixtures OCR 21/21, pricing 12/12, collection 34/34, history 24/24, iOS bundle builds.
+Not exercised in the browser: the eBay grade link (popups are blocked in the test pane).
+On-phone check pending (owner).
+
+All six collector-roadmap steps are built on `feat/collector-tabs`.

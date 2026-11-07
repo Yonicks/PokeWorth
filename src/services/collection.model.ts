@@ -9,7 +9,8 @@
 export interface PriceSnapshot {
   amount: number;
   currency: string;
-  provider: 'TCGplayer' | 'Cardmarket';
+  /** "Your value" is a value the user typed for a graded copy (decision 2). */
+  provider: 'TCGplayer' | 'Cardmarket' | 'Your value';
   /** Provider's own date for the price. */
   updated?: string;
   /** Cardmarket change vs its 7- / 30-day average, in percent (market movers). */
@@ -40,7 +41,21 @@ export interface CollectionEntry {
   addedAt: string;
   card: CardSnapshot;
   price?: PriceSnapshot;
+  /** Set for a graded copy; such entries are never merged or repriced. */
+  graded?: Grading;
 }
+
+/** A graded (slabbed) copy, entered by the user. */
+export interface Grading {
+  company: string;
+  grade: string;
+  cert?: string;
+  /** Unique per graded copy; part of the entry id. */
+  slot: string;
+}
+
+export const GRADING_COMPANIES = ['PSA', 'BGS', 'CGC', 'SGC', 'TAG', 'ACE'] as const;
+export const GRADES = ['10', '9.5', '9', '8.5', '8', '7.5', '7', '6', '5', '4', '3', '2', '1'] as const;
 
 export interface Portfolio {
   id: string;
@@ -208,12 +223,22 @@ export function removeEntries(state: CollectionState, ids: string[]): Collection
   return { ...state, entries: state.entries.filter((e) => !drop.has(e.id)) };
 }
 
-/** Move entries to another portfolio, merging quantities with what is there. */
+function gradedEntryId(portfolioId: string, cardId: string, slot: string): string {
+  return `${portfolioId}|${cardId}|graded:${slot}`;
+}
+
+/** Move entries to another portfolio, merging raw quantities with what is there. */
 export function moveEntries(state: CollectionState, ids: string[], toPortfolioId: string): CollectionState {
   if (!state.portfolios.some((p) => p.id === toPortfolioId)) return state;
   const moving = new Set(ids);
   let next: CollectionState = { ...state, entries: state.entries.filter((e) => !moving.has(e.id)) };
   for (const e of state.entries.filter((x) => moving.has(x.id) && x.portfolioId !== toPortfolioId)) {
+    if (e.graded) {
+      // Each graded copy is unique: it moves as it is, never merged.
+      const id = gradedEntryId(toPortfolioId, e.cardId, e.graded.slot);
+      next = { ...next, entries: [{ ...e, id, portfolioId: toPortfolioId }, ...next.entries] };
+      continue;
+    }
     const targetId = entryId(toPortfolioId, e.cardId, e.printingId);
     const target = next.entries.find((x) => x.id === targetId);
     next = target
@@ -266,9 +291,90 @@ export function updatePrices(
   return {
     ...state,
     entries: state.entries.map((e) =>
-      e.cardId === cardId && e.printingId in prices ? { ...e, price: prices[e.printingId] } : e,
+      // Graded copies keep the value the user entered.
+      !e.graded && e.cardId === cardId && e.printingId in prices ? { ...e, price: prices[e.printingId] } : e,
     ),
   };
+}
+
+/** What the "Add a graded card" form produces. */
+export interface GradedInput {
+  cardId: string;
+  printingId: string;
+  printingLabel: string;
+  card: CardSnapshot;
+  company: string;
+  grade: string;
+  cert?: string;
+  /** The user's own value; optional. */
+  value?: { amount: number; currency: string };
+  portfolioId?: string;
+}
+
+export type GradedErrors = Partial<Record<'company' | 'grade' | 'cert' | 'value', string>>;
+
+/** Check the form before saving. Returns an empty object when it is fine. */
+export function validateGraded(state: CollectionState, input: GradedInput, valueText: string): GradedErrors {
+  const errors: GradedErrors = {};
+  if (!input.company.trim()) errors.company = 'Choose who graded the card.';
+  if (!input.grade.trim()) errors.grade = 'Choose the grade on the label.';
+  const cert = input.cert?.trim();
+  if (cert && !/^[A-Za-z0-9-]{4,20}$/.test(cert)) errors.cert = 'Use the 4–20 letters or digits from the label.';
+  if (
+    cert &&
+    state.entries.some((e) => e.graded && e.graded.company === input.company && e.graded.cert === cert)
+  ) {
+    errors.cert = `This ${input.company} certificate is already in your collection.`;
+  }
+  if (valueText.trim()) {
+    const n = Number(valueText.replace(',', '.'));
+    if (!Number.isFinite(n) || n <= 0) errors.value = 'Enter a value above 0, or leave it empty.';
+  }
+  return errors;
+}
+
+/** Add one graded copy. `slot` makes it unique (pass a fixed one in tests). */
+export function addGraded(
+  state: CollectionState,
+  input: GradedInput,
+  now = new Date().toISOString(),
+  slot = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
+): CollectionState {
+  const portfolioId = input.portfolioId ?? state.activePortfolioId;
+  const grading: Grading = {
+    company: input.company.trim(),
+    grade: input.grade.trim(),
+    cert: input.cert?.trim() || undefined,
+    slot,
+  };
+  const entry: CollectionEntry = {
+    id: gradedEntryId(portfolioId, input.cardId, slot),
+    portfolioId,
+    cardId: input.cardId,
+    printingId: input.printingId,
+    printingLabel: input.printingLabel,
+    quantity: 1,
+    condition: `${grading.company} ${grading.grade}`,
+    addedAt: now,
+    card: input.card,
+    graded: grading,
+    price: input.value
+      ? { amount: Math.round(input.value.amount * 100) / 100, currency: input.value.currency, provider: 'Your value', updated: now.slice(0, 10) }
+      : undefined,
+  };
+  return { ...state, entries: [entry, ...state.entries] };
+}
+
+/** Graded copies of one card in a portfolio. */
+export function gradedOf(state: CollectionState, cardId: string, portfolioId = state.activePortfolioId): CollectionEntry[] {
+  return state.entries.filter((e) => e.graded && e.cardId === cardId && e.portfolioId === portfolioId);
+}
+
+/** Raw (ungraded) copies of a card in a portfolio. */
+export function rawQuantity(state: CollectionState, cardId: string, portfolioId = state.activePortfolioId): number {
+  return state.entries
+    .filter((e) => !e.graded && e.portfolioId === portfolioId && e.cardId === cardId)
+    .reduce((n, e) => n + e.quantity, 0);
 }
 
 export function entriesIn(state: CollectionState, portfolioId = state.activePortfolioId): CollectionEntry[] {
@@ -323,8 +429,9 @@ function csvCell(v: string | number | undefined): string {
 export function toCsv(state: CollectionState, portfolioId = state.activePortfolioId): string {
   const portfolio = state.portfolios.find((p) => p.id === portfolioId)?.name ?? portfolioId;
   const header = [
-    'Portfolio', 'Card', 'Set', 'Number', 'Rarity', 'Printing', 'Condition', 'Quantity',
-    'Unit price', 'Currency', 'Price source', 'Price date', 'Total', 'Card id', 'Added',
+    'Portfolio', 'Card', 'Set', 'Number', 'Rarity', 'Printing', 'Condition', 'Grader', 'Grade',
+    'Cert', 'Quantity', 'Unit price', 'Currency', 'Price source', 'Price date', 'Total', 'Card id',
+    'Added',
   ];
   const rows = entriesIn(state, portfolioId).map((e) => [
     portfolio,
@@ -334,6 +441,9 @@ export function toCsv(state: CollectionState, portfolioId = state.activePortfoli
     e.card.rarity,
     e.printingLabel,
     e.condition,
+    e.graded?.company,
+    e.graded?.grade,
+    e.graded?.cert,
     e.quantity,
     e.price?.amount,
     e.price?.currency,

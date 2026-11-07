@@ -79,10 +79,11 @@ const EntryTile = memo(function EntryTile({
         {[entry.card.rarity, entry.card.number ?? entry.card.localId].filter(Boolean).join(' • ')}
       </Text>
       <Text style={styles.condition} numberOfLines={1}>
-        <Text style={styles.conditionGood}>{entry.condition}</Text> • {entry.printingLabel}
+        <Text style={entry.graded ? styles.conditionGraded : styles.conditionGood}>{entry.condition}</Text> •{' '}
+        {entry.printingLabel}
       </Text>
       <View style={styles.tileFoot}>
-        <Text style={styles.qty}>Qty: {entry.quantity}</Text>
+        <Text style={styles.qty}>{entry.graded ? (entry.price ? 'Your value' : 'Graded') : `Qty: ${entry.quantity}`}</Text>
         <Text style={styles.value}>
           {value !== undefined ? formatMoney(value, entry.price!.currency) : 'No price'}
         </Text>
@@ -399,7 +400,16 @@ const styles = StyleSheet.create({
   meta: { ...type.cardMeta, fontSize: 13, color: colors.textSecondary },
   condition: { fontSize: 13, lineHeight: 17, color: colors.textSecondary },
   conditionGood: { color: colors.up },
-  tileFoot: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 'auto', paddingTop: 4 },
+  conditionGraded: { color: colors.goldText, fontWeight: '700' },
+  tileFoot: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    columnGap: space.sm,
+    marginTop: 'auto',
+    paddingTop: 4,
+  },
   qty: { ...type.caption, color: colors.textTertiary },
   value: { fontSize: 16, fontWeight: '700', color: colors.price, fontVariant: ['tabular-nums'] },
   emptyWrap: { alignItems: 'center' },

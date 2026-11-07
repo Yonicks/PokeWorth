@@ -3,6 +3,11 @@
  * Run: npx tsx scripts/collection-fixtures.ts
  */
 import {
+  addGraded,
+  gradedOf,
+  rawQuantity,
+  validateGraded,
+  type GradedInput,
   addOne,
   byValue,
   cardQuantity,
@@ -120,6 +125,41 @@ const csvState = setQuantity(emptyCollection(NOW), gengar, 2, NOW);
 const csv = toCsv(csvState).split('\n');
 check('CSV has a header and quotes cells with commas or quotes',
   csv[0].startsWith('Portfolio,Card,Set') && csv[1].includes('"Gengar, ""Cosmos"""'), csv[1]);
+
+// Graded copies (roadmap step 6).
+const psa: GradedInput = {
+  cardId: 'base1-4', printingId: 'unl', printingLabel: 'Holofoil',
+  card: charizardHolo.card, company: 'PSA', grade: '10', cert: '12345678',
+  value: { amount: 37587.74, currency: 'USD' },
+};
+let g = setQuantity(emptyCollection(NOW), charizardHolo, 2, NOW);
+g = addGraded(g, psa, NOW, 'a1');
+check('graded copy is its own entry beside raw copies',
+  g.entries.length === 2 && quantityOf(g, 'base1-4', 'unl') === 2 && gradedOf(g, 'base1-4').length === 1);
+const graded = gradedOf(g, 'base1-4')[0];
+check('graded entry: condition "PSA 10", quantity 1, own value',
+  graded.condition === 'PSA 10' && graded.quantity === 1 && graded.price?.provider === 'Your value' && graded.price.amount === 37587.74,
+  JSON.stringify(graded));
+check('raw quantity leaves graded copies out', rawQuantity(g, 'base1-4') === 2 && cardQuantity(g, 'base1-4') === 3);
+g = updatePrices(g, 'base1-4', { unl: { amount: 1, currency: 'USD', provider: 'TCGplayer' } });
+check('price refresh never overwrites a graded value', gradedOf(g, 'base1-4')[0].price?.amount === 37587.74);
+check('graded value counts in totals', totals(entriesIn(g)).byCurrency.USD === 37589.74, JSON.stringify(totals(entriesIn(g))));
+check('same company + cert is rejected', validateGraded(g, psa, '100').cert !== undefined);
+check('another company with that number is allowed', validateGraded(g, { ...psa, company: 'CGC' }, '').cert === undefined);
+check('bad cert and value are rejected',
+  !!validateGraded(g, { ...psa, cert: '1' }, 'abc').cert && !!validateGraded(g, { ...psa, cert: undefined }, '-5').value);
+check('missing company and grade are rejected',
+  Object.keys(validateGraded(g, { ...psa, company: '', grade: '', cert: undefined }, '')).join(',') === 'company,grade');
+g = addGraded(g, { ...psa, cert: undefined, value: undefined }, NOW, 'a2');
+check('a graded copy without a value is unpriced', totals(entriesIn(g)).unpricedCopies === 1);
+g = createPortfolio(g, 'Slabs', NOW);
+g = moveEntries(g, [`main|base1-4|graded:a1`], 'slabs');
+check('moving a graded copy keeps it separate and graded',
+  gradedOf(g, 'base1-4', 'slabs').length === 1 && gradedOf(g, 'base1-4', 'main').length === 1 && quantityOf(g, 'base1-4', 'unl', 'main') === 2,
+  JSON.stringify(g.entries.map((e) => e.id)));
+check('graded copies survive save and load', gradedOf(parseCollection(JSON.stringify(g)), 'base1-4', 'slabs')[0]?.graded?.cert === '12345678');
+const gcsv = toCsv(g, 'slabs').split('\n');
+check('CSV has grader, grade and cert', gcsv[0].includes('Grader,Grade,Cert') && gcsv[1].includes(',PSA,10,12345678,'), gcsv[1]);
 
 console.log(`\n${total - failed}/${total} collection fixtures passed.`);
 if (failed > 0) process.exit(1);

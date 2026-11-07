@@ -6,25 +6,16 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { AddToPortfolio } from '@/components/add-to-portfolio';
 import { CardHero, Facts, PriceBlock, PrintingPicker } from '@/components/card-detail';
 import { Icon } from '@/components/icons';
-import { useCard } from '@/hooks/use-cards';
 import { PriceChart } from '@/components/price-chart';
+import { useCard } from '@/hooks/use-cards';
 import { useCollection, useUpdateCollection } from '@/hooks/use-collection';
 import { useHistory, useRecordCard } from '@/hooks/use-history';
 import { toggleFavorite } from '@/services/collection.model';
 import { seriesKey } from '@/services/history.model';
+import { soldListingsUrl } from '@/services/links';
 import { defaultPrinting, printingsFor } from '@/services/printings.service';
 import { addRecentScan } from '@/services/storage.service';
 import { colors, radius, space, type } from '@/theme/tokens';
-import type { Card } from '@/types/card';
-
-/** eBay's sold-items search for this card; opens in the in-app browser. */
-function soldListingsUrl(card: Card): string {
-  const number = card.set?.cardCount?.official
-    ? `${card.localId}/${card.set.cardCount.official}`
-    : card.localId;
-  const query = [card.name, number, card.set?.name].filter(Boolean).join(' ');
-  return `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(query)}&LH_Sold=1&LH_Complete=1`;
-}
 
 function stageLabel(stage?: string): string | undefined {
   return stage?.replace(/^Stage(\d)$/, 'Stage $1');

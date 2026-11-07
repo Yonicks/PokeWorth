@@ -1,4 +1,3 @@
-import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
@@ -11,11 +10,11 @@ import {
   View,
 } from 'react-native';
 
+import { CardTile, cardGridStyles } from '@/components/card-tile';
 import { Icon } from '@/components/icons';
 import { EmptyState, ScreenTitle } from '@/components/screen';
 import { useCardSearch } from '@/hooks/use-cards';
 import { parseCollectorNumber } from '@/services/card-matcher.service';
-import { cardImageUrl } from '@/services/tcgdex.service';
 import { colors, radius, space, type } from '@/theme/tokens';
 import type { CardBrief } from '@/types/card';
 
@@ -39,38 +38,24 @@ export default function SearchScreen() {
     setQuery(value);
   };
 
-  const renderCard = ({ item }: { item: CardBrief }) => (
-    <Pressable
-      style={({ pressed }) => [styles.tile, pressed && styles.pressed]}
-      onPress={() => router.push({ pathname: '/result', params: { id: item.id } })}
-      accessibilityRole="button"
-      accessibilityLabel={`${item.name}, number ${item.localId}`}>
-      {item.image ? (
-        <Image
-          source={{ uri: cardImageUrl(item.image, 'low') }}
-          style={styles.art}
-          contentFit="contain"
-        />
-      ) : (
-        <View style={[styles.art, styles.artEmpty]}>
-          <Text style={styles.artEmptyText}>No image</Text>
-        </View>
-      )}
-      <Text style={styles.tileName} numberOfLines={2}>
-        {item.name}
-      </Text>
-      <Text style={styles.tileMeta} numberOfLines={1}>
-        #{item.localId}
-      </Text>
-    </Pressable>
-  );
+  const renderCard = ({ item }: { item: CardBrief }) => <CardTile card={item} />;
 
   const showHint = query.length < 3;
 
   return (
     <View style={styles.screen}>
       <View style={styles.top}>
-        <ScreenTitle>Search</ScreenTitle>
+        <ScreenTitle
+          right={
+            <Pressable
+              style={({ pressed }) => [styles.setsButton, pressed && styles.pressed]}
+              onPress={() => router.push('/sets')}
+              accessibilityRole="button">
+              <Text style={styles.setsText}>Show Sets</Text>
+            </Pressable>
+          }>
+          Search
+        </ScreenTitle>
         <View style={styles.searchRow}>
           <Pressable
             style={({ pressed }) => [styles.camera, pressed && styles.pressed]}
@@ -105,8 +90,8 @@ export default function SearchScreen() {
           keyExtractor={(item) => item.id}
           renderItem={renderCard}
           numColumns={2}
-          columnWrapperStyle={styles.column}
-          contentContainerStyle={styles.list}
+          columnWrapperStyle={cardGridStyles.column}
+          contentContainerStyle={cardGridStyles.list}
           keyboardShouldPersistTaps="handled"
           ListEmptyComponent={
             showHint ? (
@@ -154,22 +139,15 @@ const styles = StyleSheet.create({
   },
   input: { flex: 1, fontSize: 16, color: colors.textPrimary, height: '100%' },
   loading: { marginTop: space.xl * 2 },
-  list: { paddingHorizontal: space.lg, paddingBottom: space.xl * 2, gap: space.md },
-  column: { gap: space.md },
-  tile: {
-    flex: 1,
-    maxWidth: '50%',
-    padding: space.sm + 2,
-    gap: 4,
-    borderRadius: radius.card,
-    backgroundColor: colors.surface,
+  setsButton: {
+    minHeight: 36,
+    paddingHorizontal: space.lg,
+    justifyContent: 'center',
+    borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: colors.border,
+    backgroundColor: colors.raised,
   },
-  art: { width: '100%', aspectRatio: 63 / 88, borderRadius: 6, marginBottom: 4 },
-  artEmpty: { backgroundColor: colors.raised, alignItems: 'center', justifyContent: 'center' },
-  artEmptyText: { ...type.caption, color: colors.textTertiary },
-  tileName: { ...type.cardTitle, color: colors.textPrimary },
-  tileMeta: { ...type.cardMeta, color: colors.textSecondary },
+  setsText: { ...type.caption, fontSize: 14, fontWeight: '600', color: colors.textPrimary },
   pressed: { opacity: 0.85 },
 });

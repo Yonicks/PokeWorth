@@ -36,6 +36,8 @@ export default function RootLayout() {
           <Stack.Screen name="scan" options={{ title: 'Scan Card', headerShown: false }} />
           <Stack.Screen name="manual-entry" options={{ title: 'Enter Card Details' }} />
           <Stack.Screen name="confirm" options={{ title: 'Confirm Card' }} />
+          <Stack.Screen name="sets" options={{ title: 'Sets' }} />
+          <Stack.Screen name="sets/[id]" options={{ title: 'Set' }} />
           <Stack.Screen
             name="result"
             options={{

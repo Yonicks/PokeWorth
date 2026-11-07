@@ -455,3 +455,21 @@ Verified in Chrome at 375 × 812 on `base1-4`: hero, $987.13 TCGplayer + €353.
 Cardmarket with +13.4 % / −17.8 % changes, switching to 1st Edition shows €3,489.25,
 facts list. `tsc` PASS, `expo lint` PASS, pricing fixtures 12/12. On-phone check pending
 (owner).
+
+### Step 3 · Search and sets (P2.4)
+
+- `src/app/sets.tsx`: every physical set, newest first (TCGdex lists oldest first; TCG
+  Pocket sets are left out), with logo, card count and a name filter. Promo sets without
+  a printed total show how many cards exist.
+- `src/app/sets/[id].tsx`: set logo, series, release date, card count (+ secret cards)
+  and the set's cards in a 2-column grid.
+- Search tab: "Show Sets" button; the card grid is now the shared
+  `src/components/card-tile.tsx`, also used by set pages.
+- Card Details: the gold set name opens that set.
+- `tcgdex.service.ts`: `listSets`, `getSet`, `setLogoUrl` (WebP, about 4× smaller than
+  PNG). Hooks `useSets` (6 h cache) and `useSet` (1 h).
+
+Verified in Chrome at 375 × 812: Search → Show Sets lists sets newest first with logos;
+filter "Base Set" leaves 3; Base Set page shows "Base • January 9, 1999 • 102 cards" and
+its cards; Charizard → tapping "Base Set" opens `/sets/base1`. `tsc` PASS,
+`expo lint` PASS, OCR 21/21, pricing 12/12. On-phone check pending (owner).

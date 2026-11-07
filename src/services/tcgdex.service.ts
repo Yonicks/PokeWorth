@@ -13,6 +13,7 @@ import type {
   PriceDetail,
   ProviderPricing,
   SetBrief,
+  SetDetail,
 } from '../types/card';
 
 const BASE_URL = 'https://api.tcgdex.net/v2/en';
@@ -37,6 +38,31 @@ export async function searchCardsByName(name: string): Promise<CardBrief[]> {
 /** Fetch the full card record, including set, variants, and pricing. */
 export async function getCard(id: string): Promise<Card> {
   return get<Card>(`/cards/${encodeURIComponent(id)}`);
+}
+
+/** Series whose sets are not physical cards (TCG Pocket is a phone game). */
+const DIGITAL_SERIES = ['tcgp'];
+
+/**
+ * All physical sets, newest first. TCGdex lists sets oldest first, so the
+ * list is reversed; digital-only series are left out.
+ */
+export async function listSets(): Promise<SetBrief[]> {
+  const [sets, digital] = await Promise.all([
+    get<SetBrief[]>('/sets'),
+    Promise.all(
+      DIGITAL_SERIES.map((id) =>
+        get<{ sets: { id: string }[] }>(`/series/${id}`).catch(() => ({ sets: [] })),
+      ),
+    ),
+  ]);
+  const skip = new Set(digital.flatMap((s) => s.sets.map((x) => x.id)));
+  return sets.filter((s) => !skip.has(s.id)).reverse();
+}
+
+/** One set with its card list. */
+export async function getSet(id: string): Promise<SetDetail> {
+  return get<SetDetail>(`/sets/${encodeURIComponent(id)}`);
 }
 
 let setSizesRequest: Promise<Map<string, number>> | null = null;
@@ -72,6 +98,11 @@ export function cardImageUrl(
 ): string | undefined {
   if (!image) return undefined;
   return `${image}/${quality}.webp`;
+}
+
+/** Set logo URL; TCGdex logo paths have no extension either. WebP is ~4× smaller than PNG. */
+export function setLogoUrl(logo: string | undefined): string | undefined {
+  return logo ? `${logo}.webp` : undefined;
 }
 
 const TCGPLAYER_LABELS: Record<string, string> = {

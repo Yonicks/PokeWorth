@@ -1,5 +1,5 @@
 import * as WebBrowser from 'expo-web-browser';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -39,6 +39,7 @@ function fallbackPrintings(card: Card): Printing[] {
 
 export default function CardDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const router = useRouter();
   const card = useCard(typeof id === 'string' ? id : undefined);
   const [selectedId, setSelectedId] = useState<string>();
 
@@ -96,7 +97,18 @@ export default function CardDetailScreen() {
             {data.name}
           </Text>
           <Text style={styles.meta}>
-            Pokémon • <Text style={styles.set}>{data.set?.name ?? 'Unknown set'}</Text>
+            Pokémon •{' '}
+            {data.set ? (
+              <Text
+                style={styles.set}
+                onPress={() => router.push({ pathname: '/sets/[id]', params: { id: data.set!.id } })}
+                accessibilityRole="link"
+                accessibilityHint="Opens every card in this set">
+                {data.set.name}
+              </Text>
+            ) : (
+              'Unknown set'
+            )}
           </Text>
           <Text style={styles.meta}>{[data.rarity, `№${number}`].filter(Boolean).join(' • ')}</Text>
         </View>

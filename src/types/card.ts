@@ -24,6 +24,13 @@ export interface SetBrief {
   };
 }
 
+/** Full set record from /v2/en/sets/{id}. */
+export interface SetDetail extends SetBrief {
+  releaseDate?: string;
+  serie?: { id: string; name: string };
+  cards: CardBrief[];
+}
+
 /** Which printings exist for a card. */
 export interface CardVariants {
   normal?: boolean;

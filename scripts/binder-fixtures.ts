@@ -15,7 +15,21 @@ import {
   type Rect,
 } from '../src/services/binder-grid.model';
 import {
+  addLines,
+  canAdd,
+  chooseCard,
+  choosePrinting,
+  initReview,
+  skipPocket,
+  tickedCount,
+  toggleTick,
+} from '../src/services/binder-review.model';
+import type { PocketResult } from '../src/services/binder-scan.service';
+import { addMany, emptyCollection, quantityOf, type EntryInput } from '../src/services/collection.model';
+import type { CardBrief } from '../src/types/card';
+import {
   classifyPocket,
+  type PocketStatus,
   pocketErrorText,
   runQueue,
   startsTicked,
@@ -92,6 +106,56 @@ check('a 3×3 pocket from a 12 MP photo is big enough to read (≥ 900 px wide)'
   p9[0].width >= 900, String(p9[0].width));
 check('labels read row then pocket', pocketLabel(p9[5]) === 'Row 2, pocket 3');
 check('layout table matches pocket counts', LAYOUTS['3x3'].cols * LAYOUTS['3x3'].rows === 9 && LAYOUTS['2x2'].label === '4 pockets');
+
+// ── Steps 4 and 5: review grid and adding many ──────────────────────────────
+
+const brief = (id: string, name: string): CardBrief => ({ id, localId: '1', name });
+const result = (index: number, status: PocketStatus, cands: CardBrief[]) =>
+  ({
+    index, row: Math.floor(index / 3), col: index % 3, uri: `u${index}`, status, lines: [],
+    outcome: { parsed: { rawLines: [] }, candidates: cands.map((card) => ({ card, score: 0.9, reasons: [] })) },
+  }) as unknown as PocketResult;
+
+const pieces = [
+  result(0, 'sure', [brief('a-1', 'Alpha'), brief('a-2', 'Alpha')]),
+  result(1, 'check', [brief('b-1', 'Beta'), brief('b-2', 'Beta')]),
+  result(2, 'notfound', []),
+  result(3, 'empty', []),
+  result(4, 'sure', [brief('a-1', 'Alpha')]),
+  undefined,
+  result(6, 'error', []),
+];
+let review = initReview(pieces);
+check('every read pocket is on the grid; cancelled ones are not', review.length === 6, String(review.length));
+check('only Sure starts ticked (decision 3)', review.filter((p) => p.ticked).map((p) => p.index).join(',') === '0,4');
+check('Check is selected but unticked, so one tap adds it', review[1].cardId === 'b-1' && !review[1].ticked);
+check('Not found, Empty and Error have nothing to add', [2, 3, 6].every((i) => !canAdd(review.find((p) => p.index === i)!)));
+review = toggleTick(review, 2);
+check('a pocket with no card cannot be ticked', !review.find((p) => p.index === 2)!.ticked);
+review = toggleTick(review, 1);
+check('ticking a Check pocket works', review.find((p) => p.index === 1)!.ticked && tickedCount(review) === 3);
+review = chooseCard(review, 1, brief('b-2', 'Beta'));
+check('choosing another candidate selects it and keeps it ticked', review.find((p) => p.index === 1)!.cardId === 'b-2' && review.find((p) => p.index === 1)!.ticked);
+review = chooseCard(review, 2, brief('c-9', 'Searched by hand'));
+check('a card found by search can fill a Not found pocket', review.find((p) => p.index === 2)!.cardId === 'c-9' && review.find((p) => p.index === 2)!.ticked);
+review = choosePrinting(review, 4, 'holo');
+review = skipPocket(review, 0);
+check('skip unticks without losing the match', !review.find((p) => p.index === 0)!.ticked && review.find((p) => p.index === 0)!.cardId === 'a-1');
+const lines = addLines(review);
+check('lines group the same card, printing apart, in page order',
+  lines.map((l) => `${l.cardId}${l.printingId ? '/' + l.printingId : ''}x${l.quantity}`).join(' ') === 'b-2x1 c-9x1 a-1/holox1', lines.map((l) => `${l.cardId}x${l.quantity}`).join(' '));
+review = chooseCard(toggleTick(review, 0), 0, brief('a-1', 'Alpha'));
+review = chooseCard(review, 4, brief('a-1', 'Alpha'));
+check('the same card and printing on two pockets adds quantity 2',
+  addLines(review).find((l) => l.cardId === 'a-1')?.quantity === 2, JSON.stringify(addLines(review)));
+
+const addInput = (cardId: string, printingId = 'p'): EntryInput => ({
+  cardId, printingId, printingLabel: 'Holofoil', card: { name: cardId, localId: '1' },
+});
+let owned = addMany(emptyCollection('2026-11-08T00:00:00.000Z'), [{ input: addInput('x'), quantity: 2 }, { input: addInput('y'), quantity: 1 }]);
+check('addMany adds each card with its quantity', quantityOf(owned, 'x', 'p') === 2 && quantityOf(owned, 'y', 'p') === 1);
+owned = addMany(owned, [{ input: addInput('x'), quantity: 1 }, { input: addInput('x'), quantity: 1 }]);
+check('cards already owned have their quantity raised, duplicates add up', quantityOf(owned, 'x', 'p') === 4);
 
 // ── Step 3: camera preview → photo mapping ──────────────────────────────────
 

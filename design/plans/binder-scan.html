@@ -146,7 +146,7 @@ footer p { font-size: 13px; color: var(--fg-3); }
 <div class="wrap">
 
 <header>
-  <div class="eyebrow">Feature plan · steps 0–2 done · 25 of 27 pockets right</div>
+  <div class="eyebrow">Feature plan · steps 0–5 built · needs a phone test</div>
   <h1>Binder <span>Page Scan</span></h1>
   <p>Take one photo of a binder page. PokeWorth splits it into pockets, reads every card, and shows you a review grid with what it found. You fix anything it got wrong, then add all the cards to your portfolio in one tap. Nothing is added until you confirm.</p>
   <div class="meta">
@@ -326,9 +326,9 @@ footer p { font-size: 13px; color: var(--fg-3); }
     <li><div><h3>Try it on real pages <span class="tag ok">done</span></h3><p>You send 3 photos of real binder pages: one easy, one with glare, one at a slight angle. I run options A and B on them outside the app and record, pocket by pocket, whether the right card came out on top, plus the time and request count.</p><p class="why">This decides the OCR option and the pocket inset before any screens are built.</p></div></li>
     <li><div><h3>Pocket grid and cropping <span class="tag ok">built</span></h3><p>A pure layout model for 2×2, 3×3 and 3×4 that turns a photo size into pocket rectangles with an inset. A crop service on top of it. Offline tests for the maths.</p></div></li>
     <li><div><h3>Batch reading <span class="tag ok">built</span></h3><p>A queue that reads and matches pockets three at a time, with progress, cancel, retry for failed pockets and the empty check. Each pocket gets Sure, Check, Not found or Empty. Also the matcher fixes from step 0: number lookup, last-word and prefix fallbacks, ex suffixes, top-line preference and rotation. Tested with recorded OCR text from your three pages.</p></div></li>
-    <li><div><h3>Binder camera</h3><p>A Card / Binder page switch on the Scan screen, the layout picker, the gold grid guide, the glare tip and photo import. Also reachable from the Portfolio tab.</p></div></li>
-    <li><div><h3>Review grid</h3><p>Pockets laid out like your page, each with a status colour. Tapping a pocket shows the top 3 matches, search by hand, the printing choice, or skip. Sure pockets start ticked; Check pockets you tick yourself.</p></div></li>
-    <li><div><h3>Add to portfolio</h3><p>A tested "add many" in the collection model: duplicates on a page are merged, cards you already own have their quantity raised, and it ends with a summary ("Added 7 cards, $412.30") and <strong>Scan next page</strong>.</p></div></li>
+    <li><div><h3>Binder camera <span class="tag ok">built</span></h3><p>A Card / Binder page switch on the Scan screen, the layout picker, the gold grid guide, the glare tip and photo import. Also reachable from the Portfolio tab.</p></div></li>
+    <li><div><h3>Review grid <span class="tag ok">built</span></h3><p>Pockets laid out like your page, each with a status colour. Tapping a pocket shows the top 3 matches, search by hand, the printing choice, or skip. Sure pockets start ticked; Check pockets you tick yourself.</p></div></li>
+    <li><div><h3>Add to portfolio <span class="tag ok">built</span></h3><p>A tested "add many" in the collection model: duplicates on a page are merged, cards you already own have their quantity raised, and it ends with a summary ("Added 7 cards, $412.30") and <strong>Scan next page</strong>.</p></div></li>
   </ol>
 
   <div class="table-wrap"><table>

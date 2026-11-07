@@ -671,3 +671,33 @@ Gyarados, Crobat δ, Claydol ex5-2) because the OCR lost the trainer name and TC
 search by attack. The review grid (step 4) lets the user pick the printing.
 Fixtures: binder 42/42, OCR 21/21, pricing 12/12, collection 34/34, history 24/24;
 `tsc` PASS, `expo lint` PASS. Expo restarted so the app uses the owner's OCR key.
+
+### Step 3 · Binder camera and reading screen
+- `/binder-scan`: Card / Binder page switch (also on the Scan screen), 3×3 and 2×2 layouts,
+  gold grid from the crop geometry (dims the rest), glare tip, import. The on-screen guide
+  is mapped to the photo (`previewRectToPhoto`, tested) because the preview covers the
+  screen. "Scan binder" button on the Portfolio tab.
+- `/binder-read`: crops the page, reads 3 pockets at a time, pockets fill in with status;
+  Stop, Retry failed, Scan another page.
+- Cloud OCR: size measured before resizing (fixed "source height is zero" on web crops, no
+  upscaling); temporary 5xx errors retried twice (a 503 from OCR.space appeared once).
+
+### Steps 4 and 5 · Review grid and add to portfolio
+- `binder-review.model.ts` (pure, tested): each pocket starts with the best match; only Sure
+  is ticked (decision 3); tick, choose another candidate (also from a name search), choose
+  printing, skip; ticked pockets group by card + printing, duplicates on one page become a
+  higher quantity. `collection.model.addMany` raises quantities of cards already owned.
+- `binder-pocket-sheet.tsx`: pocket photo, top 5 candidates, printing chips with prices,
+  search by name, Skip, Done. `binder-add.service.ts` loads each card once and builds the
+  additions with today's price.
+- Review screen: tick boxes on tiles, "Add N cards to Main" bar, summary ("Added 3 cards to
+  Main, $171.46"), Scan next page, View portfolio. Cards that fail to load are reported, not
+  silently dropped.
+- Binder fixtures 59/59 (13 new), OCR 21, pricing 12, collection 34, history 24; `tsc` and
+  `expo lint` pass.
+
+Verified in Chrome at 375 × 812 with a public card image as a 2×2 stand-in page: 3 cards
+found, none ticked, tick two → "Add 2 cards to Main", open a pocket (5 candidates), choose
+another candidate (ticks it) → "Add 3 cards", Add → "Added 3 cards to Main, $171.46" and the
+saved collection grew by 3 (test cards removed afterwards). Not verified: the live camera
+and grid on a phone, a real binder photo through the app, and 12-pocket pages.

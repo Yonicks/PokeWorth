@@ -10,6 +10,7 @@
 
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 
+import { detectPageFrameInPhoto } from './page-edges.service';
 import {
   bottomStripRect,
   DEFAULT_INSET,
@@ -34,6 +35,31 @@ export interface CropOptions {
    */
   frame?: 'guide' | 'full' | Rect;
   inset?: number;
+}
+
+/**
+ * Flag: the page frame is auto-detected unless EXPO_PUBLIC_BINDER_AUTO_FRAME=off
+ * (restart Expo with --clear after changing it).
+ */
+export const AUTO_FRAME = process.env.EXPO_PUBLIC_BINDER_AUTO_FRAME !== 'off';
+
+export type FrameSource = 'auto-detected' | 'camera guide' | 'whole photo';
+
+/**
+ * Where the page is: the auto-detected frame when it can be found with
+ * confidence (3-column layouts), otherwise the fallback the capture screen
+ * gave (the mapped camera guide, or the whole photo for imports).
+ */
+export async function resolvePageFrame(
+  uri: string,
+  layout: BinderLayout,
+  fallback: Rect | 'full',
+  autoDetect = AUTO_FRAME,
+): Promise<{ frame: Rect | 'full'; source: FrameSource }> {
+  const fallbackResult = { frame: fallback, source: fallback === 'full' ? 'whole photo' : 'camera guide' } as const;
+  if (!autoDetect) return fallbackResult;
+  const found = await detectPageFrameInPhoto(uri, layout);
+  return found ? { frame: found.frame, source: 'auto-detected' } : fallbackResult;
 }
 
 /** Pixel size of an image. */

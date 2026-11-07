@@ -757,3 +757,30 @@ reader answered. The device reader exists only in development and release builds
 Expo Go: on the owner's iPhone in Expo Go everything still goes to OCR.space. A free way to
 use it today is an Android development build on the emulator (`npx expo run:android`).
 iPhone needs an Apple Developer account ($99/year) or a Mac. Fixtures: OCR 27/27.
+
+### Page-edge detection (2026-11-08)
+The crop used to depend on lining the page up in the gold frame; in the phone test the top row
+of pockets included the yellow binder edge and the cloth, and the bottom row was cut off.
+- `src/services/page-edges.model.ts` (pure, 12 tests in `scripts/page-edges-fixtures.ts`): in a
+  photo of a binder page the darkest lines are the sleeve seams. Two vertical and two
+  horizontal seams give the pocket pitch, and the page frame follows (first seam − 1 pitch to
+  last seam + 1 pitch), even when part of the page is cut off at an edge. Works for 3-column
+  layouts (3×3, 3×4); 2×2 has one seam and falls back to the camera guide. Pocket height is
+  constrained to 1.05–1.55× the width pitch; a confidence check (seam darkness against the
+  profile's average and median) rejects non-pages.
+- `page-edges.service.ts`: shrinks the photo to 240 px (expo-image-manipulator), decodes it in
+  JS (`jpeg-js`, no pixel API in Expo Go) and runs the model; ~1 s in Chrome.
+- `resolvePageFrame` (`binder-crop.service.ts`): auto frame when confident, else the camera
+  guide, else the whole photo. Flag `EXPO_PUBLIC_BINDER_AUTO_FRAME=off` disables it. The
+  review screen's debug line says which frame was used.
+- Measured on the owner's five page photos: all five found; confidence/contrast 2.35–4.52 /
+  2.92–7.43 for pages versus 1.98–2.19 / 2.17–2.34 for single-card images and about 1.1 for
+  noise (thresholds 2.25 and 2.6, tuned on only these photos). Pockets cut with the auto frame
+  sit squarely on the cards on page 4; the old whole-photo frame included the yellow edge and
+  cut off the bottom row. Known limits: upright pages only, seams must be clearly the darkest
+  lines, accuracy about 5 % of the page.
+
+### Android development build (2026-11-08)
+First tries failed at `ninja: Filename longer than 260 characters` (react-native-gesture-handler
+C++). Moving the project to `D:\Git\PokeWorth` was not enough; `plugins/with-short-cxx-dir.js`
+(Windows only) points the CMake staging directory at `C:/pwcxx`.

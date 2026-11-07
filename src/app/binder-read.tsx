@@ -10,8 +10,13 @@ import { Icon } from '@/components/icons';
 import { useCollection, useUpdateCollection } from '@/hooks/use-collection';
 import { planAdd } from '@/services/binder-add.service';
 import { getBinderCapture } from '@/services/binder-capture';
-import { cropPockets, type PocketImage } from '@/services/binder-crop.service';
-import { LAYOUTS, pocketLabel } from '@/services/binder-grid.model';
+import {
+  cropPockets,
+  resolvePageFrame,
+  type FrameSource,
+  type PocketImage,
+} from '@/services/binder-crop.service';
+import { LAYOUTS, pocketLabel, type Rect } from '@/services/binder-grid.model';
 import {
   canAdd,
   chooseCard,
@@ -109,6 +114,7 @@ export default function BinderReadScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const capture = getBinderCapture(typeof id === 'string' ? id : undefined);
   const [pockets, setPockets] = useState<PocketImage[]>([]);
+  const [frameInfo, setFrameInfo] = useState<{ source: FrameSource; frame: Rect | 'full' } | null>(null);
   const [results, setResults] = useState<Record<number, PocketResult>>({});
   const [review, setReview] = useState<ReviewPocket[] | null>(null);
   const [phase, setPhase] = useState<'cropping' | 'reading' | 'done' | 'cancelled' | 'failed'>('cropping');
@@ -135,8 +141,12 @@ export default function BinderReadScreen() {
   useEffect(() => {
     if (!capture) return;
     let alive = true;
-    cropPockets(capture.uri, capture.layout, { frame: capture.frame })
-      .then((list) => {
+    // Find the page in the photo (falls back to the camera guide / whole photo), then cut it up.
+    resolvePageFrame(capture.uri, capture.layout, capture.frame)
+      .then(async ({ frame, source }) => {
+        if (!alive) return;
+        setFrameInfo({ source, frame });
+        const list = await cropPockets(capture.uri, capture.layout, { frame });
         if (!alive) return;
         setPockets(list);
         return read(list);
@@ -240,8 +250,10 @@ export default function BinderReadScreen() {
         </View>
         {__DEV__ && pockets.length > 0 ? (
           <Text style={styles.debug}>
-            DEBUG pocket {pockets[0].width}×{pockets[0].height} px, frame{' '}
-            {capture.frame === 'full' ? 'whole photo' : `${capture.frame.width}×${capture.frame.height} at ${capture.frame.originX},${capture.frame.originY}`}
+            DEBUG pocket {pockets[0].width}×{pockets[0].height} px, page frame {frameInfo?.source ?? '…'}
+            {frameInfo && frameInfo.frame !== 'full'
+              ? ` ${frameInfo.frame.width}×${frameInfo.frame.height} at ${frameInfo.frame.originX},${frameInfo.frame.originY}`
+              : ''}
           </Text>
         ) : null}
         {reviewing ? (

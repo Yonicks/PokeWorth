@@ -5,6 +5,7 @@ import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Icon } from '@/components/icons';
+import { MostValuable } from '@/components/most-valuable';
 import { EmptyState, SectionTitle } from '@/components/screen';
 import { useRecentScans } from '@/hooks/use-cards';
 import { cardImageUrl } from '@/services/tcgdex.service';
@@ -76,6 +77,8 @@ export default function HomeScreen() {
             <Icon name="search" color={colors.textPrimary} size={20} />
             <Text style={styles.secondaryText}>Search Manually</Text>
           </Pressable>
+
+          <MostValuable />
 
           <SectionTitle>Recent Scans</SectionTitle>
         </View>

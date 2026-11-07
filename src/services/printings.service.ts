@@ -11,6 +11,8 @@
 
 import type { Card, PriceDetail, ProviderPricing, VariantDetail } from '../types/card';
 
+import { extractDisplayPrices } from './tcgdex.service';
+
 export type { VariantDetail };
 
 export interface PrintingPrice {
@@ -134,6 +136,20 @@ export function getPrintings(card: Card): Printing[] {
   });
 }
 
+/**
+ * Printings for any card: `variants_detailed` when TCGdex has it, otherwise
+ * one printing per row of the older flat pricing fields.
+ */
+export function printingsFor(card: Card): Printing[] {
+  const detailed = getPrintings(card);
+  if (detailed.length > 0) return detailed;
+  return extractDisplayPrices(card).map((p) => ({
+    id: `${p.provider}-${p.variant}`,
+    label: p.label,
+    prices: [{ provider: p.provider, amount: p.amount, currency: p.currency, updated: p.updated }],
+  }));
+}
+
 /** The printing to show first: the first one that has a price. */
 export function defaultPrinting(printings: Printing[]): Printing | undefined {
   return printings.find((p) => p.prices.length > 0) ?? printings[0];
@@ -146,6 +162,14 @@ export function formatMoney(amount: number, currency: string): string {
   } catch {
     return `${amount.toFixed(2)} ${currency}`;
   }
+}
+
+/** "$1,974.26 + €3,489.25": currencies side by side (USD first), never added together. */
+export function formatTotals(byCurrency: Record<string, number>): string {
+  const parts = Object.entries(byCurrency)
+    .sort(([a], [b]) => (a === 'USD' ? -1 : b === 'USD' ? 1 : a.localeCompare(b)))
+    .map(([c, v]) => formatMoney(v, c));
+  return parts.length ? parts.join(' + ') : formatMoney(0, 'USD');
 }
 
 /** "+12.4%" / "−3.1%" with a real minus sign. */

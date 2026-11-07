@@ -473,3 +473,35 @@ Verified in Chrome at 375 × 812: Search → Show Sets lists sets newest first w
 filter "Base Set" leaves 3; Base Set page shows "Base • January 9, 1999 • 102 cards" and
 its cards; Charizard → tapping "Base Set" opens `/sets/base1`. `tsc` PASS,
 `expo lint` PASS, OCR 21/21, pricing 12/12. On-phone check pending (owner).
+
+### Step 4 · Portfolio (P5.1–P5.5)
+
+- `src/services/collection.model.ts` (pure, tested): storage v1 `pokeworth.collection.v1`
+  with several portfolios ("Main" first), one entry per card + printing + portfolio,
+  quantity 1–999, condition (Near Mint by default), a price snapshot and favourites.
+  Corrupt or wrong-version data loads as an empty collection (AC-P5.1). Totals are kept
+  per currency and never added across currencies; unpriced copies are counted separately
+  (AC-P5.4). CSV export.
+- `src/services/collection.service.ts`: AsyncStorage load/save; writes run one at a time.
+  `src/hooks/use-collection.ts`: shared cache with instant (optimistic) updates.
+- Card Details: "Adding to: Main" with a −/qty/+ stepper per printing and a running
+  total (AC-P5.2), favourite star.
+- Search and set grids: quick + adds one copy of the card's main printing; tiles show
+  the owned quantity.
+- Portfolio tab: search, favourites filter, portfolio switcher (create a new one),
+  total per currency with hide/show, card count and unpriced count, Select → Remove
+  (tap twice) / Move to another portfolio, Export (share sheet, CSV), sort by value or
+  newest, pull-to-refresh prices through the query cache (AC-P5.5).
+- Home: portfolio total and Most Valuable (top 4) with View All.
+- `scripts/collection-fixtures.ts`: 21 offline checks.
+
+Verified in Chrome at 375 × 812: steppers on `base1-4` give 2 × Holofoil + 1 × 1st
+Edition and "Total $1,974.26 + €3,489.25"; quick + on Blastoise gives "Qty: 1"; Portfolio
+lists 3 entries with "$2,203.55 + €3,489.25 · 4 cards"; Select → Remove (twice) removes
+Blastoise; Home shows Most Valuable; data survives a page reload (AC-P5.6). `tsc` PASS,
+`expo lint` PASS, fixtures OCR 21/21, pricing 12/12, collection 21/21, iOS bundle builds.
+Not exercised in the browser: the portfolio switcher UI, Move, Export (share sheet) and
+pull-to-refresh (logic covered by fixtures). On-phone check pending (owner).
+
+Known limits: totals in USD and EUR are shown side by side until currency conversion
+(step 5); "By value" sorting compares amounts without converting currencies.

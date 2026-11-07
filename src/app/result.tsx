@@ -3,12 +3,14 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { AddToPortfolio } from '@/components/add-to-portfolio';
 import { CardHero, Facts, PriceBlock, PrintingPicker } from '@/components/card-detail';
 import { Icon } from '@/components/icons';
 import { useCard } from '@/hooks/use-cards';
-import { defaultPrinting, getPrintings, type Printing } from '@/services/printings.service';
+import { useCollection, useUpdateCollection } from '@/hooks/use-collection';
+import { toggleFavorite } from '@/services/collection.model';
+import { defaultPrinting, printingsFor } from '@/services/printings.service';
 import { addRecentScan } from '@/services/storage.service';
-import { extractDisplayPrices } from '@/services/tcgdex.service';
 import { colors, radius, space, type } from '@/theme/tokens';
 import type { Card } from '@/types/card';
 
@@ -25,16 +27,21 @@ function stageLabel(stage?: string): string | undefined {
   return stage?.replace(/^Stage(\d)$/, 'Stage $1');
 }
 
-/**
- * Cards without `variants_detailed` still get their prices: one printing
- * per provider row from the older flat pricing fields.
- */
-function fallbackPrintings(card: Card): Printing[] {
-  return extractDisplayPrices(card).map((p) => ({
-    id: `${p.provider}-${p.variant}`,
-    label: p.label,
-    prices: [{ provider: p.provider, amount: p.amount, currency: p.currency, updated: p.updated }],
-  }));
+function FavoriteStar({ cardId, name }: { cardId: string; name: string }) {
+  const collection = useCollection();
+  const update = useUpdateCollection();
+  const on = !!collection.data?.favorites.includes(cardId);
+  return (
+    <Pressable
+      onPress={() => update.mutate((s) => toggleFavorite(s, cardId))}
+      hitSlop={8}
+      style={styles.star}
+      accessibilityRole="button"
+      accessibilityState={{ selected: on }}
+      accessibilityLabel={on ? `Remove ${name} from favourites` : `Add ${name} to favourites`}>
+      <Icon name="star" color={on ? colors.goldText : colors.textTertiary} filled={on} size={26} />
+    </Pressable>
+  );
 }
 
 export default function CardDetailScreen() {
@@ -57,11 +64,7 @@ export default function CardDetailScreen() {
     }
   }, [card.data]);
 
-  const printings = useMemo(() => {
-    if (!card.data) return [];
-    const detailed = getPrintings(card.data);
-    return detailed.length > 0 ? detailed : fallbackPrintings(card.data);
-  }, [card.data]);
+  const printings = useMemo(() => (card.data ? printingsFor(card.data) : []), [card.data]);
 
   if (card.isLoading) {
     return (
@@ -93,9 +96,12 @@ export default function CardDetailScreen() {
 
       <View style={styles.body}>
         <View style={styles.titleBlock}>
-          <Text style={styles.name} accessibilityRole="header">
-            {data.name}
-          </Text>
+          <View style={styles.nameRow}>
+            <Text style={styles.name} accessibilityRole="header">
+              {data.name}
+            </Text>
+            <FavoriteStar cardId={data.id} name={data.name} />
+          </View>
           <Text style={styles.meta}>
             Pokémon •{' '}
             {data.set ? (
@@ -124,6 +130,8 @@ export default function CardDetailScreen() {
           <Text style={styles.soldText}>View Sold Listings on eBay</Text>
           <Icon name="chevron" color={colors.goldText} size={18} />
         </Pressable>
+
+        <AddToPortfolio card={data} printings={printings} />
 
         <Text style={styles.section} accessibilityRole="header">
           Card details
@@ -158,7 +166,9 @@ const styles = StyleSheet.create({
   retryText: { fontWeight: '700', color: colors.textOnGold },
   body: { paddingHorizontal: space.lg, gap: space.lg, marginTop: -space.sm },
   titleBlock: { gap: 2 },
-  name: { fontSize: 28, lineHeight: 34, fontWeight: '800', color: colors.textPrimary },
+  nameRow: { flexDirection: 'row', alignItems: 'flex-start', gap: space.md },
+  name: { flex: 1, fontSize: 28, lineHeight: 34, fontWeight: '800', color: colors.textPrimary },
+  star: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', marginTop: -4 },
   meta: { fontSize: 17, lineHeight: 23, color: colors.textSecondary },
   set: { color: colors.goldText },
   sold: {

@@ -243,6 +243,7 @@ export default function PortfolioScreen() {
         <Action icon="select" label={selecting ? 'Done' : 'Select'} active={selecting} onPress={() => (selecting ? endSelecting() : setSelecting(true))} />
         <Action icon="camera" label="Scan binder" onPress={() => router.push('/binder-scan')} />
         <Action icon="share" label="Export" onPress={exportCsv} />
+        <Action icon="copy" label="Lists" onPress={() => router.push('/lists')} />
         <Action icon="chevron" label={sort === 'value' ? 'By value' : 'Newest'} onPress={() => setSort((s) => (s === 'value' ? 'recent' : 'value'))} />
       </View>
       {notice ? <Text style={styles.notice}>{notice}</Text> : null}

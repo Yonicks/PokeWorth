@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 
 import { OcrDebugPanel } from '@/components/ocr-debug-panel';
+import { PriceTag } from '@/components/price-tag';
 import { useCardMatch } from '@/hooks/use-cards';
 import { splitStrongMatches } from '@/services/card-matcher.service';
 import { cardImageUrl } from '@/services/tcgdex.service';
@@ -123,6 +124,7 @@ export default function ConfirmScreen() {
         <Text style={styles.candidateMeta}>
           #{item.card.localId} · {item.card.id}
         </Text>
+        <PriceTag cardId={item.card.id} style={styles.candidatePrice} />
         <Text style={styles.candidateScore}>
           Match {(item.score * 100).toFixed(0)}% ({item.reasons.join(', ')})
         </Text>
@@ -216,6 +218,7 @@ const styles = StyleSheet.create({
   candidateInfo: { flex: 1, justifyContent: 'center' },
   candidateName: { fontSize: 17, fontWeight: '600', color: '#fefefe' },
   candidateMeta: { fontSize: 13, color: '#8e8e93', marginTop: 2 },
+  candidatePrice: { fontSize: 17, marginTop: 4 },
   candidateScore: { fontSize: 13, color: '#208AEF', marginTop: 4 },
   moreButton: { paddingVertical: 16, alignItems: 'center' },
   moreText: { fontSize: 15, color: '#208AEF', fontWeight: '600' },

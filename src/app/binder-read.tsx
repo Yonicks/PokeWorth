@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { PocketSheet } from '@/components/binder-pocket-sheet';
 import { Icon } from '@/components/icons';
+import { PriceTag } from '@/components/price-tag';
 import { useCollection, useUpdateCollection } from '@/hooks/use-collection';
 import { planAdd } from '@/services/binder-add.service';
 import { getBinderCapture } from '@/services/binder-capture';
@@ -109,6 +110,7 @@ function PocketTile({
           #{card.localId}
         </Text>
       ) : null}
+      {card ? <PriceTag cardId={card.id} printingId={review?.printingId} /> : null}
     </Pressable>
   );
 }

@@ -14,7 +14,7 @@ import { useHistory, useRecordCard } from '@/hooks/use-history';
 import { toggleFavorite } from '@/services/collection.model';
 import { seriesKey } from '@/services/history.model';
 import { soldListingsUrl } from '@/services/links';
-import { defaultPrinting, printingsFor } from '@/services/printings.service';
+import { defaultPrinting, formatMoney, printingsFor } from '@/services/printings.service';
 import { addRecentScan } from '@/services/storage.service';
 import { colors, radius, space, type } from '@/theme/tokens';
 
@@ -146,6 +146,14 @@ export default function CardDetailScreen() {
             )}
           </Text>
           <Text style={styles.meta}>{[data.rarity, `№${number}`].filter(Boolean).join(' • ')}</Text>
+          {selected?.prices[0] ? (
+            <Text
+              style={styles.headPrice}
+              accessibilityLabel={`Worth ${formatMoney(selected.prices[0].amount, selected.prices[0].currency)} on ${selected.prices[0].provider}`}>
+              {formatMoney(selected.prices[0].amount, selected.prices[0].currency)}
+              <Text style={styles.headPriceSource}> {selected.prices[0].provider}</Text>
+            </Text>
+          ) : null}
         </View>
 
         <PrintingPicker printings={printings} selectedId={selected?.id} onSelect={setSelectedId} />
@@ -208,6 +216,8 @@ const styles = StyleSheet.create({
   star: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', marginTop: -4 },
   meta: { fontSize: 17, lineHeight: 23, color: colors.textSecondary },
   set: { color: colors.goldText },
+  headPrice: { fontSize: 30, lineHeight: 38, fontWeight: '800', color: colors.price, fontVariant: ['tabular-nums'], marginTop: space.xs },
+  headPriceSource: { fontSize: 14, fontWeight: '500', color: colors.textTertiary },
   sold: {
     flexDirection: 'row',
     alignItems: 'center',

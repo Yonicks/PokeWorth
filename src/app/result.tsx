@@ -1,3 +1,4 @@
+import * as Clipboard from 'expo-clipboard';
 import * as WebBrowser from 'expo-web-browser';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
@@ -34,6 +35,35 @@ function FavoriteStar({ cardId, name }: { cardId: string; name: string }) {
       accessibilityState={{ selected: on }}
       accessibilityLabel={on ? `Remove ${name} from favourites` : `Add ${name} to favourites`}>
       <Icon name="star" color={on ? colors.goldText : colors.textTertiary} filled={on} size={26} />
+    </Pressable>
+  );
+}
+
+/** Copies the card's name to the clipboard; shows a check mark for a moment. */
+function CopyName({ name }: { name: string }) {
+  const [copied, setCopied] = useState(false);
+  useEffect(() => {
+    if (!copied) return;
+    const timer = setTimeout(() => setCopied(false), 1600);
+    return () => clearTimeout(timer);
+  }, [copied]);
+  const copy = async () => {
+    try {
+      // On web this can resolve to false when the browser refuses; show nothing then.
+      if (await Clipboard.setStringAsync(name)) setCopied(true);
+    } catch {
+      // Clipboard unavailable: leave the button as it was.
+    }
+  };
+  return (
+    <Pressable
+      onPress={copy}
+      hitSlop={8}
+      style={styles.star}
+      accessibilityRole="button"
+      accessibilityLabel={copied ? `Copied ${name}` : `Copy the name ${name}`}
+      accessibilityLiveRegion="polite">
+      <Icon name={copied ? 'check' : 'copy'} color={copied ? colors.up : colors.textTertiary} size={24} />
     </Pressable>
   );
 }
@@ -98,6 +128,7 @@ export default function CardDetailScreen() {
             <Text style={styles.name} accessibilityRole="header">
               {data.name}
             </Text>
+            <CopyName name={data.name} />
             <FavoriteStar cardId={data.id} name={data.name} />
           </View>
           <Text style={styles.meta}>

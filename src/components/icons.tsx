@@ -19,7 +19,8 @@ export type IconName =
   | 'eyeOff'
   | 'share'
   | 'trash'
-  | 'select';
+  | 'select'
+  | 'copy';
 
 interface Props {
   name: IconName;
@@ -97,6 +98,12 @@ export function Icon({ name, color, size = 24, filled = false }: Props) {
         <>
           <Rect x={3} y={3} width={18} height={18} rx={4} {...stroke} />
           <Path d="m8 12 3 3 5-6" {...stroke} />
+        </>
+      )}
+      {name === 'copy' && (
+        <>
+          <Rect x={9} y={9} width={12} height={12} rx={2.5} {...stroke} />
+          <Path d="M5 15V6.5A2.5 2.5 0 0 1 7.5 4H15" {...stroke} />
         </>
       )}
     </Svg>

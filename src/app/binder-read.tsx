@@ -2,7 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { PocketSheet } from '@/components/binder-pocket-sheet';
@@ -44,12 +44,14 @@ function PocketTile({
   review,
   onOpen,
   onTick,
+  onPeek,
 }: {
   pocket: PocketImage;
   result?: PocketResult;
   review?: ReviewPocket;
   onOpen: () => void;
   onTick: () => void;
+  onPeek: () => void;
 }) {
   const status = result?.status ?? 'reading';
   const s = STATUS[status];
@@ -58,11 +60,14 @@ function PocketTile({
   return (
     <Pressable
       onPress={reviewable ? onOpen : undefined}
-      disabled={!reviewable}
+      onLongPress={onPeek}
+      delayLongPress={350}
       style={[styles.tile, status === 'reading' && styles.tileReading, review?.ticked && styles.tileTicked]}
       accessibilityRole="button"
       accessibilityLabel={`${pocketLabel(pocket)}: ${review?.unsure ? 'printing unsure' : s.label}${card ? `, ${card.name}` : ''}${review?.ticked ? ', ticked' : ''}`}
-      accessibilityHint={reviewable ? 'Opens this pocket to change the match' : undefined}>
+      accessibilityHint={reviewable ? 'Opens this pocket to change the match. Hold to see your photo of it.' : 'Hold to see your photo of it.'}
+      accessibilityActions={[{ name: 'longpress', label: 'Show my photo of this pocket' }]}
+      onAccessibilityAction={() => onPeek()}>
       <Image
         source={{ uri: card?.image ? cardImageUrl(card.image, 'low') : pocket.uri }}
         style={[styles.thumb, status === 'empty' && styles.thumbEmpty]}
@@ -113,6 +118,7 @@ export default function BinderReadScreen() {
   const [review, setReview] = useState<ReviewPocket[] | null>(null);
   const [phase, setPhase] = useState<'cropping' | 'reading' | 'done' | 'cancelled' | 'failed'>('cropping');
   const [open, setOpen] = useState<number | null>(null);
+  const [peek, setPeek] = useState<PocketImage | null>(null);
   const [adding, setAdding] = useState(false);
   const [added, setAdded] = useState<{ cards: number; copies: number; value: string; failed: number; into: string } | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -272,6 +278,7 @@ export default function BinderReadScreen() {
                   review={r}
                   onOpen={() => setOpen(p.index)}
                   onTick={() => setReview((cur) => (cur ? toggleTick(cur, p.index) : cur))}
+                  onPeek={() => setPeek(p)}
                 />
               </View>
             );
@@ -317,6 +324,21 @@ export default function BinderReadScreen() {
         </View>
       ) : null}
 
+      <Modal visible={!!peek} transparent animationType="fade" onRequestClose={() => setPeek(null)}>
+        <Pressable
+          style={styles.peek}
+          onPress={() => setPeek(null)}
+          accessibilityRole="button"
+          accessibilityLabel="Close photo">
+          {peek ? (
+            <>
+              <Image source={{ uri: peek.uri }} style={styles.peekImage} contentFit="contain" />
+              <Text style={styles.peekHint}>{pocketLabel(peek)} · your photo. Tap to close.</Text>
+            </>
+          ) : null}
+        </Pressable>
+      </Modal>
+
       <PocketSheet
         pocket={openPocket}
         onClose={() => setOpen(null)}
@@ -361,6 +383,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   checkboxOn: { backgroundColor: colors.gold400, borderColor: colors.gold300 },
+  peek: { flex: 1, backgroundColor: 'rgba(0,0,0,0.92)', alignItems: 'center', justifyContent: 'center', padding: space.lg, gap: space.md },
+  peekImage: { width: '100%', flex: 1 },
+  peekHint: { fontSize: 14, color: colors.textSecondary },
   stripe: { height: 4, borderRadius: 2, marginTop: 2 },
   status: { fontSize: 12, fontWeight: '700', color: colors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.3 },
   name: { fontSize: 13, lineHeight: 16, fontWeight: '600', color: colors.textPrimary },

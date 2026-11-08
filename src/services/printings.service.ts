@@ -24,6 +24,10 @@ export interface PrintingPrice {
   /** Change of today's figure against the 7- and 30-day averages, in percent. */
   vs7d?: number;
   vs30d?: number;
+  /** Cardmarket 1-, 7- and 30-day average prices (used to start a price chart). */
+  avg1?: number;
+  avg7?: number;
+  avg30?: number;
   /** TCGplayer low / high listing, when given. */
   low?: number;
   high?: number;
@@ -86,6 +90,9 @@ function cardmarketPrice(p: ProviderPricing | null | undefined, type: string): P
     updated: typeof p.updated === 'string' ? p.updated : undefined,
     vs7d: percent(amount, num(p, `avg7${s}`)),
     vs30d: percent(amount, num(p, `avg30${s}`)),
+    avg1: num(p, `avg1${s}`),
+    avg7: num(p, `avg7${s}`),
+    avg30: num(p, `avg30${s}`),
   };
 }
 

@@ -13,6 +13,7 @@ import {
   addPortfolioPoint,
   dayKey,
   parseHistory,
+  seedPoints,
   seriesKey,
   type HistoryState,
 } from './history.model';
@@ -41,11 +42,22 @@ export function updateHistory(change: (h: HistoryState) => HistoryState): Promis
   return run;
 }
 
-/** Add today's price of every priced printing of a card. */
+/**
+ * Add today's price of every priced printing of a card. A printing with no
+ * history yet and a Cardmarket price also gets estimated points from the
+ * 1/7/30-day averages (TCGplayer data has no averages, so those start today).
+ */
 export function withCard(h: HistoryState, card: Card, day = dayKey()): HistoryState {
   return printingsFor(card).reduce((acc, p) => {
     const price = p.prices[0];
-    return price ? addCardPoint(acc, seriesKey(card.id, p.id), { d: day, v: price.amount, c: price.currency }) : acc;
+    if (!price) return acc;
+    const key = seriesKey(card.id, p.id);
+    // First sighting of a Cardmarket-priced printing: start from its averages.
+    const seeded =
+      !acc.cards[key]?.length && price.provider === 'Cardmarket'
+        ? seedPoints(price, price.currency, day).reduce((a, pt) => addCardPoint(a, key, pt), acc)
+        : acc;
+    return addCardPoint(seeded, key, { d: day, v: price.amount, c: price.currency });
   }, h);
 }
 

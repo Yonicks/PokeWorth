@@ -10,6 +10,7 @@ import {
   emptyHistory,
   inRange,
   parseHistory,
+  seedPoints,
   spanDays,
 } from '../src/services/history.model';
 import { convert, convertTotals, sortValue } from '../src/services/currency.model';
@@ -60,6 +61,14 @@ check('save and load round-trips', JSON.stringify(parseHistory(JSON.stringify(h)
 check('corrupt history loads empty', Object.keys(parseHistory('nope').cards).length === 0);
 check('broken points are dropped',
   parseHistory(JSON.stringify({ version: 1, cards: { a: [{ d: 'x' }, { d: '2026-11-07', v: 1, c: 'USD' }] }, portfolios: {} })).cards.a.length === 1);
+
+const seed = seedPoints({ avg1: 10, avg7: 11, avg30: 12 }, 'EUR', '2026-11-08');
+check('seed places avg30/avg7/avg1 at -15/-3/-1 days',
+  seed.map((p) => `${p.d}:${p.v}`).join(',') === '2026-10-24:12,2026-11-05:11,2026-11-07:10', JSON.stringify(seed));
+check('seed skips missing and zero averages', seedPoints({ avg7: 0, avg30: 5 }, 'EUR', '2026-11-08').length === 1);
+let sh = emptyHistory();
+for (const pt of [...seed, { d: '2026-11-08', v: 9, c: 'EUR' }]) sh = addCardPoint(sh, 'x|y', pt);
+check('seeded series ends with today and spans 15 days', sh.cards['x|y'].length === 4 && spanDays(sh.cards['x|y']) === 15);
 
 const fx = { eurUsd: 1.1165, date: '2026-11-06' };
 check('EUR to USD', Math.abs((convert(100, 'EUR', 'USD', fx) ?? 0) - 111.65) < 1e-9);

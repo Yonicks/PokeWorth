@@ -50,7 +50,8 @@
       ],
       "expo-image",
       "expo-status-bar",
-      "expo-web-browser"
+      "expo-web-browser",
+      "./plugins/with-short-cxx-dir"
     ],
     "experiments": {
       "typedRoutes": true,

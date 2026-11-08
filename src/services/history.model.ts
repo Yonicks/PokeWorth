@@ -3,7 +3,10 @@
  * stored as `pokeworth.history.v1` by history.service.ts.
  *
  * TCGdex only gives today's prices, so history starts on the day a card is
- * first seen and gains at most one point per day. Nothing is back-filled.
+ * first seen and gains at most one point per day. The one exception is the
+ * first sighting of a Cardmarket-priced card: `seedPoints` starts the chart
+ * from the 1/7/30-day averages so it is not empty. Those are estimates and
+ * real daily points replace them as the days pass.
  */
 
 /** One day's price: date (local YYYY-MM-DD), value, currency. */
@@ -76,6 +79,32 @@ export function dayKey(date = new Date()): string {
 
 export function seriesKey(cardId: string, printingId: string): string {
   return `${cardId}|${printingId}`;
+}
+
+/**
+ * Rough past points from Cardmarket's rolling averages, for a series that has
+ * no history yet. Each average is placed in the middle of the days it covers:
+ * avg30 about 15 days ago, avg7 about 3 days ago, avg1 yesterday. A missing or
+ * non-positive average is skipped; the caller adds today's real price itself.
+ */
+export function seedPoints(
+  avgs: { avg1?: number; avg7?: number; avg30?: number },
+  currency: string,
+  today = dayKey(),
+): Point[] {
+  const at = (daysAgo: number) => {
+    const d = new Date(`${today}T00:00:00`);
+    d.setDate(d.getDate() - daysAgo);
+    return dayKey(d);
+  };
+  const steps: [number | undefined, number][] = [
+    [avgs.avg30, 15],
+    [avgs.avg7, 3],
+    [avgs.avg1, 1],
+  ];
+  return steps
+    .filter((s): s is [number, number] => typeof s[0] === 'number' && s[0] > 0)
+    .map(([v, ago]) => ({ d: at(ago), v, c: currency }));
 }
 
 /** Insert or replace the point for that day, keeping the series sorted and capped. */

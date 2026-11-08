@@ -35,7 +35,15 @@ export interface ReviewPocket {
 
 export const MAX_CANDIDATES_SHOWN = 5;
 
-export function initReview(results: (PocketResult | undefined)[]): ReviewPocket[] {
+/**
+ * `owned` says how many copies of a card the portfolio already holds. A card
+ * you already own is picked but not ticked: it may be a real second copy, so
+ * the user decides (a "Sure" match of an unowned card is still ticked).
+ */
+export function initReview(
+  results: (PocketResult | undefined)[],
+  owned: (cardId: string) => number = () => 0,
+): ReviewPocket[] {
   return results
     .filter((r): r is PocketResult => !!r)
     .map((r) => {
@@ -52,7 +60,7 @@ export function initReview(results: (PocketResult | undefined)[]): ReviewPocket[
         variants: r.outcome?.variants ?? 0,
         candidates,
         cardId: hasCard ? candidates[0].id : undefined,
-        ticked: hasCard && startsTicked(r.status) && !r.unsure,
+        ticked: hasCard && startsTicked(r.status) && !r.unsure && owned(candidates[0].id) === 0,
       };
     });
 }

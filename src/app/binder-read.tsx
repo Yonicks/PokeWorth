@@ -24,7 +24,7 @@ import {
 } from '@/services/binder-review.model';
 import { summarize, type PocketStatus } from '@/services/binder-scan.model';
 import { readPocket, readPockets, type PocketResult } from '@/services/binder-scan.service';
-import { addMany } from '@/services/collection.model';
+import { addMany, cardQuantity } from '@/services/collection.model';
 import { formatTotals } from '@/services/printings.service';
 import { cardImageUrl } from '@/services/tcgdex.service';
 import { colors, radius, space, type } from '@/theme/tokens';
@@ -45,10 +45,13 @@ function PocketTile({
   onOpen,
   onTick,
   onPeek,
+  owned,
 }: {
   pocket: PocketImage;
   result?: PocketResult;
   review?: ReviewPocket;
+  /** Copies of the picked card already in the active portfolio. */
+  owned: number;
   onOpen: () => void;
   onTick: () => void;
   onPeek: () => void;
@@ -64,7 +67,7 @@ function PocketTile({
       delayLongPress={350}
       style={[styles.tile, status === 'reading' && styles.tileReading, review?.ticked && styles.tileTicked]}
       accessibilityRole="button"
-      accessibilityLabel={`${pocketLabel(pocket)}: ${review?.unsure ? 'printing unsure' : s.label}${card ? `, ${card.name}` : ''}${review?.ticked ? ', ticked' : ''}`}
+      accessibilityLabel={`${pocketLabel(pocket)}: ${review?.unsure ? 'printing unsure' : s.label}${card ? `, ${card.name}` : ''}${owned > 0 ? `, you already own ${owned}` : ''}${review?.ticked ? ', ticked' : ''}`}
       accessibilityHint={reviewable ? 'Opens this pocket to change the match. Hold to see your photo of it.' : 'Hold to see your photo of it.'}
       accessibilityActions={[{ name: 'longpress', label: 'Show my photo of this pocket' }]}
       onAccessibilityAction={() => onPeek()}>
@@ -91,6 +94,11 @@ function PocketTile({
       {review?.unsure ? (
         <Text style={styles.unsure} numberOfLines={1}>
           {review.variants > 24 ? '25+' : review.variants} possible, tap to pick
+        </Text>
+      ) : null}
+      {owned > 0 ? (
+        <Text style={styles.owned} numberOfLines={1}>
+          You own ×{owned}
         </Text>
       ) : null}
       <Text style={styles.name} numberOfLines={2}>
@@ -122,6 +130,11 @@ export default function BinderReadScreen() {
   const [adding, setAdding] = useState(false);
   const [added, setAdded] = useState<{ cards: number; copies: number; value: string; failed: number; into: string } | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  // Always the latest collection, for the review that starts when reading ends.
+  const ownedRef = useRef<(cardId: string) => number>(() => 0);
+  useEffect(() => {
+    ownedRef.current = (cardId) => (collection.data ? cardQuantity(collection.data, cardId) : 0);
+  }, [collection.data]);
 
   const read = useCallback(async (list: PocketImage[]) => {
     const ac = new AbortController();
@@ -134,7 +147,7 @@ export default function BinderReadScreen() {
     // Reading is over: start the review from what was read (later retries keep the user's choices).
     // Pockets never started (stopped early, e.g. at the reading limit) show as errors too.
     setResults((prev) => ({ ...prev, ...Object.fromEntries(all.map((r) => [r.index, r])) }));
-    setReview(initReview(all));
+    setReview(initReview(all, (id) => ownedRef.current(id)));
     setPhase(ac.signal.aborted ? 'cancelled' : 'done');
   }, []);
 
@@ -168,7 +181,7 @@ export default function BinderReadScreen() {
       fresh.push(r);
       setResults((prev) => ({ ...prev, [r.index]: r }));
     }
-    const redo = initReview(fresh);
+    const redo = initReview(fresh, (id) => ownedRef.current(id));
     setReview((prev) => (prev ? prev.map((p) => redo.find((r) => r.index === p.index) ?? p) : prev));
     setPhase('done');
   };
@@ -279,6 +292,7 @@ export default function BinderReadScreen() {
                   onOpen={() => setOpen(p.index)}
                   onTick={() => setReview((cur) => (cur ? toggleTick(cur, p.index) : cur))}
                   onPeek={() => setPeek(p)}
+                  owned={r?.cardId && collection.data ? cardQuantity(collection.data, r.cardId) : 0}
                 />
               </View>
             );
@@ -363,6 +377,7 @@ const styles = StyleSheet.create({
   summary: { ...type.cardMeta, color: colors.textSecondary },
   debug: { fontFamily: 'Courier', fontSize: 11, color: '#f6b35b' },
   unsure: { fontSize: 11, lineHeight: 14, color: '#F6B35B' },
+  owned: { fontSize: 12, lineHeight: 15, fontWeight: '700', color: colors.goldText },
   grid: { flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -4 },
   tile: { padding: 6, gap: 3, borderRadius: radius.card, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, minHeight: 190 },
   tileReading: { borderColor: colors.gold400 },

@@ -164,6 +164,14 @@ const mkResult = (index: number, status: PocketStatus, cands: CardBrief[], unsur
 const rv = initReview([mkResult(0, 'check', [b2('d-1', 'Ditto'), b2('d-2', 'Ditto')], true), mkResult(1, 'sure', [b2('k-1', 'Keldeo')])]);
 check('an unsure pocket is never ticked, whatever its status', !rv[0].ticked && rv[0].unsure && rv[1].ticked && !rv[1].unsure);
 
+const own = initReview(
+  [mkResult(0, 'sure', [b2('k-1', 'Keldeo')]), mkResult(1, 'sure', [b2('p-1', 'Pikachu')])],
+  (id) => (id === 'k-1' ? 2 : 0),
+);
+check('a card you already own is picked but not ticked', own[0].cardId === 'k-1' && !own[0].ticked);
+check('an unowned Sure card is still ticked', own[1].ticked);
+check('no owned lookup keeps the old behaviour', initReview([mkResult(0, 'sure', [b2('k-1', 'Keldeo')])])[0].ticked);
+
 // ── Phone test fixes: camera size and missing catalog names ─────────────────
 
 check('iOS: the full-resolution "Photo" preset is chosen', pickPictureSize(['Medium', 'High', 'Photo', 'Low']) === 'Photo');

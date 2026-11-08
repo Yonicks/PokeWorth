@@ -63,10 +63,10 @@ function QuickAdd({ card }: { card: CardBrief }) {
   );
 }
 
-export const CardTile = memo(function CardTile({ card }: { card: CardBrief }) {
+export const CardTile = memo(function CardTile({ card, dim = false }: { card: CardBrief; dim?: boolean }) {
   const router = useRouter();
   return (
-    <View style={styles.tile}>
+    <View style={[styles.tile, dim && styles.dim]}>
       <Pressable
         style={({ pressed }) => [styles.open, pressed && styles.pressed]}
         onPress={() => router.push({ pathname: '/result', params: { id: card.id } })}
@@ -113,6 +113,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
+  dim: { opacity: 0.55 },
   open: { gap: 4 },
   art: { width: '100%', aspectRatio: 63 / 88, borderRadius: 6, marginBottom: 4 },
   artEmpty: { backgroundColor: colors.raised, alignItems: 'center', justifyContent: 'center' },

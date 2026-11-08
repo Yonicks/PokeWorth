@@ -14,6 +14,8 @@ import {
 import { Icon } from '@/components/icons';
 import { EmptyState } from '@/components/screen';
 import { useSets } from '@/hooks/use-cards';
+import { useCollection } from '@/hooks/use-collection';
+import { ownedPerSet, progressOf } from '@/services/set-progress.model';
 import { setLogoUrl } from '@/services/tcgdex.service';
 import { normalize } from '@/utils/text';
 import { colors, radius, space, type } from '@/theme/tokens';
@@ -23,6 +25,8 @@ export default function SetsScreen() {
   const router = useRouter();
   const sets = useSets();
   const [filter, setFilter] = useState('');
+  const collection = useCollection();
+  const ownedIn = useMemo(() => (collection.data ? ownedPerSet(collection.data) : {}), [collection.data]);
 
   const shown = useMemo(() => {
     const all = sets.data ?? [];
@@ -33,7 +37,12 @@ export default function SetsScreen() {
   const renderSet = ({ item }: { item: SetBrief }) => {
     // Promo sets have no printed total, so fall back to how many cards exist.
     const count = item.cardCount.official || item.cardCount.total;
-    const countText = count ? `${count} cards` : 'Card count not listed';
+    const have = ownedIn[item.id] ?? 0;
+    const countText = count
+      ? have > 0
+        ? `${have} of ${count} owned · ${progressOf(have, count).pct}%`
+        : `${count} cards`
+      : 'Card count not listed';
     return (
       <Pressable
         style={({ pressed }) => [styles.row, pressed && styles.pressed]}

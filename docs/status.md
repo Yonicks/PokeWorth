@@ -758,7 +758,13 @@ Expo Go: on the owner's iPhone in Expo Go everything still goes to OCR.space. A 
 use it today is an Android development build on the emulator (`npx expo run:android`).
 iPhone needs an Apple Developer account ($99/year) or a Mac. Fixtures: OCR 27/27.
 
-### Page-edge detection (2026-11-08)
+### Page-edge detection (2026-11-08): REVERTED the same day at the owner's request
+Removed again: `page-edges.model.ts`, `page-edges.service.ts`, its 12 fixtures, the `jpeg-js`
+dependency, and `resolvePageFrame` / the frame debug line (cropping is back to the camera
+guide / whole-photo frame). The Android build plugin stays. The description below is kept as a
+record of the method and the measurements; it is NOT in the app. It can be restored from git
+commit `9df7d34`.
+
 The crop used to depend on lining the page up in the gold frame; in the phone test the top row
 of pockets included the yellow binder edge and the cloth, and the bottom row was cut off.
 - `src/services/page-edges.model.ts` (pure, 12 tests in `scripts/page-edges-fixtures.ts`): in a

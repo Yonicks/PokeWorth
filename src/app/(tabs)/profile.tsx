@@ -1,6 +1,7 @@
 import Constants from 'expo-constants';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { BackupSection } from '@/components/backup-section';
 import { ScreenTitle, SectionTitle } from '@/components/screen';
 import { useFxRate, useSetCurrency, useSettings } from '@/hooks/use-history';
 import type { DisplayCurrency } from '@/services/currency.model';
@@ -45,6 +46,9 @@ export default function ProfileScreen() {
         EUR). Portfolio totals are converted with the European Central Bank rate
         {fx.data ? `: €1 = $${fx.data.eurUsd.toFixed(4)} on ${fx.data.date}.` : ' when it can be loaded.'}
       </Text>
+
+      <SectionTitle>Backup</SectionTitle>
+      <BackupSection />
 
       <SectionTitle>About</SectionTitle>
       <View style={styles.block}>

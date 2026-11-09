@@ -154,7 +154,7 @@ const styles = StyleSheet.create({
   emptyValue: { ...type.price, fontSize: 22, color: colors.price },
   emptyText: { ...type.body, fontSize: 14, color: colors.textTertiary, textAlign: 'center' },
   pills: { flexDirection: 'row', justifyContent: 'space-between', gap: space.xs },
-  pill: { flex: 1, minHeight: 36, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
+  pill: { flex: 1, minHeight: 44, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
   pillOn: { backgroundColor: colors.raised, borderWidth: 1, borderColor: colors.border },
   pillText: { fontSize: 14, fontWeight: '700', color: colors.textTertiary },
   pillTextOn: { color: colors.textPrimary },

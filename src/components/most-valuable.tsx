@@ -199,7 +199,7 @@ const styles = StyleSheet.create({
   deltaLabel: { fontWeight: '400', color: colors.textTertiary },
   moversHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.md },
   toggle: { flexDirection: 'row', padding: 3, gap: 3, borderRadius: radius.pill, backgroundColor: colors.raised },
-  toggleItem: { minHeight: 32, paddingHorizontal: space.md, borderRadius: radius.pill, justifyContent: 'center' },
+  toggleItem: { minHeight: 44, paddingHorizontal: space.md, borderRadius: radius.pill, justifyContent: 'center' },
   toggleOn: { backgroundColor: colors.gold400 },
   toggleText: { fontSize: 13, fontWeight: '600', color: colors.textSecondary },
   toggleTextOn: { color: colors.textOnGold },

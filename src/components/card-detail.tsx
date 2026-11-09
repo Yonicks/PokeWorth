@@ -197,7 +197,7 @@ const styles = StyleSheet.create({
   chips: { gap: space.sm, paddingRight: space.lg },
   chip: {
     paddingHorizontal: space.md + 2,
-    minHeight: 36,
+    minHeight: 44,
     justifyContent: 'center',
     borderRadius: radius.pill,
     borderWidth: 1,

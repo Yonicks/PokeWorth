@@ -38,7 +38,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.18)',
   },
-  item: { minHeight: 36, paddingHorizontal: 16, borderRadius: radius.pill, justifyContent: 'center' },
+  item: { minHeight: 44, paddingHorizontal: 16, borderRadius: radius.pill, justifyContent: 'center' },
   itemOn: { backgroundColor: colors.gold400 },
   text: { fontSize: 14, fontWeight: '600', color: colors.textPrimary },
   textOn: { color: colors.textOnGold },

@@ -141,7 +141,7 @@ const styles = StyleSheet.create({
   progressText: { ...type.cardMeta, color: colors.textSecondary, textAlign: 'center' },
   chips: { flexDirection: 'row', gap: space.sm, marginTop: space.sm },
   chip: {
-    minHeight: 38,
+    minHeight: 44,
     paddingHorizontal: space.lg,
     justifyContent: 'center',
     borderRadius: radius.pill,

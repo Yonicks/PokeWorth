@@ -123,9 +123,9 @@ const styles = StyleSheet.create({
   addRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto' },
   owned: { ...type.caption, color: colors.textTertiary },
   addButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     borderWidth: 1.5,
     borderColor: colors.gold400,
     alignItems: 'center',

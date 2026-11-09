@@ -155,7 +155,7 @@ const styles = StyleSheet.create({
   name: { ...type.cardTitle, color: colors.textPrimary },
   meta: { ...type.cardMeta, fontSize: 13, color: colors.textSecondary },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
-  chip: { minHeight: 38, paddingHorizontal: space.md, borderRadius: radius.pill, justifyContent: 'center', backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  chip: { minHeight: 44, paddingHorizontal: space.md, borderRadius: radius.pill, justifyContent: 'center', backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
   chipOn: { backgroundColor: colors.gold400, borderColor: colors.gold300 },
   chipText: { fontSize: 14, fontWeight: '600', color: colors.textSecondary },
   chipTextOn: { color: colors.textOnGold },

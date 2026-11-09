@@ -251,7 +251,7 @@ const styles = StyleSheet.create({
   top: { position: 'absolute', left: 0, right: 0, top: 0, alignItems: 'center', gap: space.sm },
   layouts: { flexDirection: 'row', gap: space.sm },
   layoutChip: {
-    minHeight: 34,
+    minHeight: 44,
     paddingHorizontal: space.md,
     borderRadius: radius.pill,
     justifyContent: 'center',

@@ -34,6 +34,7 @@ import { TotalValue } from '@/components/total-value';
 import { HISTORY_KEY, useFxRate } from '@/hooks/use-history';
 import { sortValue } from '@/services/currency.model';
 import { formatMoney } from '@/services/printings.service';
+import { describeError } from '@/services/api-error';
 import { cardImageUrl } from '@/services/tcgdex.service';
 import { normalize } from '@/utils/text';
 import { colors, radius, space, type } from '@/theme/tokens';
@@ -180,8 +181,8 @@ export default function PortfolioScreen() {
       const h = await updateHistory((x) => cards.reduce((acc, c) => withCard(acc, c), x));
       client.setQueryData(HISTORY_KEY, h);
       setNotice(failed ? `Prices updated. ${failed} card${failed === 1 ? '' : 's'} could not be refreshed.` : 'Prices updated.');
-    } catch {
-      setNotice('Could not refresh prices. Check your connection.');
+    } catch (e) {
+      setNotice(`Could not refresh prices. ${describeError(e)}`);
     } finally {
       setRefreshing(false);
     }
@@ -349,12 +350,12 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   roundOn: { backgroundColor: colors.gold400, borderColor: colors.gold300 },
-  portfolioName: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, marginTop: space.md, minHeight: 32 },
+  portfolioName: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, marginTop: space.md, minHeight: 44 },
   portfolioLabel: { fontSize: 20, fontWeight: '700', color: colors.textPrimary },
   portfolioGold: { color: colors.goldText },
   totalRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.sm },
   total: { fontSize: 34, lineHeight: 42, fontWeight: '800', color: colors.textPrimary, fontVariant: ['tabular-nums'], textAlign: 'center', flexShrink: 1 },
-  eye: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.raised },
+  eye: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.raised },
   totalNote: { ...type.cardMeta, color: colors.textTertiary, textAlign: 'center' },
   actions: { flexDirection: 'row', justifyContent: 'center', gap: space.lg, marginTop: space.md },
   action: { alignItems: 'center', gap: 6, minWidth: 64 },

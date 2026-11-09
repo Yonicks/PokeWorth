@@ -140,7 +140,7 @@ const styles = StyleSheet.create({
   input: { flex: 1, fontSize: 16, color: colors.textPrimary, height: '100%' },
   loading: { marginTop: space.xl * 2 },
   setsButton: {
-    minHeight: 36,
+    minHeight: 44,
     paddingHorizontal: space.lg,
     justifyContent: 'center',
     borderRadius: radius.pill,

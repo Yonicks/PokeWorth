@@ -210,7 +210,7 @@ const styles = StyleSheet.create({
   label: { ...type.caption, color: colors.textTertiary, textTransform: 'uppercase', letterSpacing: 0.4, marginTop: space.md },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
   chip: {
-    minHeight: 40,
+    minHeight: 44,
     minWidth: 48,
     paddingHorizontal: space.md,
     borderRadius: radius.pill,
@@ -238,7 +238,7 @@ const styles = StyleSheet.create({
   valueInput: { flex: 1 },
   error: { fontSize: 13, color: colors.down },
   hint: { fontSize: 13, lineHeight: 18, color: colors.textTertiary, marginTop: space.sm },
-  link: { minHeight: 36, justifyContent: 'center' },
+  link: { minHeight: 44, justifyContent: 'center' },
   linkText: { fontSize: 15, fontWeight: '600', color: colors.goldText },
   actions: { flexDirection: 'row', gap: space.md, paddingHorizontal: space.lg, paddingTop: space.md },
   button: { flex: 1, minHeight: 50, borderRadius: radius.card, alignItems: 'center', justifyContent: 'center' },

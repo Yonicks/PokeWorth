@@ -6,13 +6,13 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "pokeworth",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "dark",
     "ios": {
       "icon": "./assets/expo.icon"
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#031229",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
@@ -43,7 +43,7 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
+          "backgroundColor": "#031229",
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
         }
@@ -63,6 +63,12 @@
         "projectId": "7359c7f3-213e-4792-aabf-255b13a6a0d0"
       }
     },
-    "owner": "yonicks"
+    "owner": "yonicks",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/7359c7f3-213e-4792-aabf-255b13a6a0d0"
+    }
   }
 }

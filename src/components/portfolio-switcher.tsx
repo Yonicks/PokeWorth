@@ -35,8 +35,8 @@ export function PortfolioSwitcher({
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Close">
-        <Pressable style={[styles.sheet, { paddingBottom: insets.bottom + space.lg }]} onPress={() => undefined}>
+      <Pressable accessibilityRole="button" style={styles.backdrop} onPress={onClose} accessibilityLabel="Close">
+        <Pressable accessibilityRole="button" style={[styles.sheet, { paddingBottom: insets.bottom + space.lg }]} onPress={() => undefined}>
           <Text style={styles.title} accessibilityRole="header">
             Portfolios
           </Text>

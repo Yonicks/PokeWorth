@@ -45,6 +45,9 @@ export interface PocketResult {
   numberFromStrip?: boolean;
   /** Set when status is "error". */
   error?: string;
+  /** Scan log (S0): time spent reading the text and matching it, in ms. */
+  ocrMs?: number;
+  matchMs?: number;
 }
 
 /**
@@ -56,13 +59,17 @@ export interface PocketResult {
 export async function readPocket(pocket: PocketImage): Promise<PocketResult> {
   const base = { index: pocket.index, row: pocket.row, col: pocket.col, uri: pocket.uri };
   try {
+    const ocrStart = Date.now();
     const ocr = await recognizeCardText(pocket.uri);
+    const ocrMs = Date.now() - ocrStart;
     if (!ocr.available) {
       return { ...base, status: 'error', lines: [], error: 'Card reading is not available on this device.' };
     }
     let lines = ocr.lines;
     let parsed = parseOcrLines(lines);
+    const matchStart = Date.now();
     let outcome = parsed.name || parsed.localId ? await matchCard(parsed) : undefined;
+    const matchMs = Date.now() - matchStart;
     let status = classifyPocket(lines, outcome ?? null);
     let numberFromStrip = false;
 
@@ -101,6 +108,8 @@ export async function readPocket(pocket: PocketImage): Promise<PocketResult> {
       status,
       lines,
       outcome,
+      ocrMs,
+      matchMs,
       numberFromStrip,
       unsure: !!outcome && (status === 'check' || status === 'sure') && isPrintingUnsure(outcome),
     };

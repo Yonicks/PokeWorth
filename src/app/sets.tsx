@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 
 import { Icon } from '@/components/icons';
-import { EmptyState } from '@/components/screen';
+import { EmptyState, ErrorState } from '@/components/screen';
 import { useSets } from '@/hooks/use-cards';
 import { useCollection } from '@/hooks/use-collection';
 import { ownedPerSet, progressOf } from '@/services/set-progress.model';
@@ -94,7 +94,7 @@ export default function SetsScreen() {
           initialNumToRender={14}
           ListEmptyComponent={
             sets.isError ? (
-              <EmptyState title="Could not load sets" body="Check your connection and try again." />
+              <ErrorState title="Could not load sets" error={sets.error} onRetry={() => sets.refetch()} />
             ) : (
               <EmptyState title="No sets match" body={`Nothing matches “${filter}”.`} />
             )

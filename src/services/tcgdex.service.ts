@@ -15,17 +15,26 @@ import type {
   SetBrief,
   SetDetail,
 } from '../types/card';
+import { ApiError, fetchWithTimeout, kindForStatus } from './api-error';
 
 const BASE_URL = 'https://api.tcgdex.net/v2/en';
 
+async function parseJson<T>(res: Response): Promise<T> {
+  try {
+    return (await res.json()) as T;
+  } catch {
+    throw new ApiError('bad-response', 'TCGdex sent a body that is not JSON', res.status);
+  }
+}
+
 async function get<T>(path: string): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
+  const res = await fetchWithTimeout(`${BASE_URL}${path}`, {
     headers: { Accept: 'application/json' },
   });
   if (!res.ok) {
-    throw new Error(`TCGdex request failed (${res.status}) for ${path}`);
+    throw new ApiError(kindForStatus(res.status), `TCGdex request failed (${res.status}) for ${path}`, res.status);
   }
-  return (await res.json()) as T;
+  return parseJson<T>(res);
 }
 
 /**
@@ -46,12 +55,15 @@ export async function searchCardsByName(name: string, hp?: number): Promise<Card
  */
 export async function getCardInSet(setId: string, localId: string): Promise<CardBrief | null> {
   const number = localId.replace(/^0+(?=\d)/, '');
-  const res = await fetch(`${BASE_URL}/sets/${encodeURIComponent(setId)}/${encodeURIComponent(number)}`, {
-    headers: { Accept: 'application/json' },
-  });
+  const res = await fetchWithTimeout(
+    `${BASE_URL}/sets/${encodeURIComponent(setId)}/${encodeURIComponent(number)}`,
+    { headers: { Accept: 'application/json' } },
+  );
   if (res.status === 404) return null;
-  if (!res.ok) throw new Error(`TCGdex request failed (${res.status}) for set ${setId} #${number}`);
-  const c = (await res.json()) as Partial<CardBrief>;
+  if (!res.ok) {
+    throw new ApiError(kindForStatus(res.status), `TCGdex request failed (${res.status}) for set ${setId} #${number}`, res.status);
+  }
+  const c = await parseJson<Partial<CardBrief>>(res);
   if (!c.id || !c.name) return null;
   return { id: c.id, localId: c.localId ?? number, name: c.name, image: c.image };
 }

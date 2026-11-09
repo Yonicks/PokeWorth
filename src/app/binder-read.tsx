@@ -27,6 +27,8 @@ import { summarize, type PocketStatus } from '@/services/binder-scan.model';
 import { readPocket, readPockets, type PocketResult } from '@/services/binder-scan.service';
 import { addMany, cardQuantity } from '@/services/collection.model';
 import { formatTotals } from '@/services/printings.service';
+import { countStatuses } from '@/services/scan-log.model';
+import { logScan } from '@/services/scan-log.service';
 import { cardImageUrl } from '@/services/tcgdex.service';
 import { colors, radius, space, type } from '@/theme/tokens';
 
@@ -142,10 +144,26 @@ export default function BinderReadScreen() {
     const ac = new AbortController();
     abortRef.current = ac;
     setPhase('reading');
+    const pageStart = Date.now();
     const all = await readPockets(list, {
       signal: ac.signal,
       onResult: (r) => setResults((prev) => ({ ...prev, [r.index]: r })),
     });
+    // Scan log (S0): one entry per page, with the average time per pocket.
+    if (!ac.signal.aborted) {
+      const avg = (f: (r: PocketResult) => number | undefined) => {
+        const v = all.map(f).filter((n): n is number => n !== undefined);
+        return v.length ? v.reduce((a, b) => a + b, 0) / v.length : undefined;
+      };
+      logScan({
+        kind: 'binder',
+        lines: [],
+        totalMs: Date.now() - pageStart,
+        readMs: avg((r) => r.ocrMs),
+        matchMs: avg((r) => r.matchMs),
+        pockets: countStatuses(all.map((r) => r.status)),
+      });
+    }
     // Reading is over: start the review from what was read (later retries keep the user's choices).
     // Pockets never started (stopped early, e.g. at the reading limit) show as errors too.
     setResults((prev) => ({ ...prev, ...Object.fromEntries(all.map((r) => [r.index, r])) }));

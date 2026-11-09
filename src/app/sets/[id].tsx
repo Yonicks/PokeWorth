@@ -1,10 +1,10 @@
 import { Image } from 'expo-image';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { CardTile, cardGridStyles } from '@/components/card-tile';
-import { EmptyState } from '@/components/screen';
+import { EmptyState, ErrorState, LoadingState } from '@/components/screen';
 import { useSet } from '@/hooks/use-cards';
 import { useCollection } from '@/hooks/use-collection';
 import { filterSetCards, ownedCardIds, progressOf, type SetFilter } from '@/services/set-progress.model';
@@ -38,7 +38,7 @@ export default function SetScreen() {
   if (set.isLoading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color={colors.goldText} />
+        <LoadingState label="Loading set…" />
       </View>
     );
   }
@@ -46,10 +46,7 @@ export default function SetScreen() {
   if (set.isError || !set.data) {
     return (
       <View style={styles.center}>
-        <Text style={styles.muted}>Could not load this set. Check your connection.</Text>
-        <Pressable style={styles.retry} onPress={() => set.refetch()} accessibilityRole="button">
-          <Text style={styles.retryText}>Retry</Text>
-        </Pressable>
+        <ErrorState title="Could not load this set" error={set.error} subject="this set" onRetry={() => set.refetch()} />
       </View>
     );
   }

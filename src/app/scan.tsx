@@ -18,6 +18,7 @@ import { setLastPhoto } from '@/services/capture-store';
 import { parseOcrLines } from '@/services/card-matcher.service';
 import { isOcrAvailable, recognizeCardText } from '@/services/ocr.service';
 import { pickCardPhoto } from '@/services/photo-import.service';
+import { logScan } from '@/services/scan-log.service';
 
 // Standard trading card ratio (63mm x 88mm).
 const CARD_RATIO = 63 / 88;
@@ -73,7 +74,7 @@ export default function ScanScreen() {
 
   // Camera photos and imported photos share this path so they cannot drift apart.
   // Only the short store id goes into route params, never the URI itself.
-  const processPhoto = async (photoUri: string, photoId: string) => {
+  const processPhoto = async (photoUri: string, photoId: string, photoMs?: number) => {
     if (!isOcrAvailable()) {
       router.replace({
         pathname: '/manual-entry',
@@ -82,9 +83,23 @@ export default function ScanScreen() {
       return;
     }
 
+    const readStart = Date.now();
     const ocr = await recognizeCardText(photoUri);
+    const readMs = Date.now() - readStart;
     if (!mountedRef.current) return;
     const parsed = parseOcrLines(ocr.lines);
+
+    // Scan log (S0): step times and what was read. Matching time is added on Confirm.
+    const logId = logScan({
+      kind: 'card',
+      photoMs,
+      readMs,
+      ocr: ocr.source,
+      lines: parsed.rawLines,
+      name: parsed.name,
+      number: parsed.localId,
+      total: parsed.setTotal,
+    });
 
     if (!parsed.name && !parsed.localId) {
       router.replace({
@@ -102,23 +117,27 @@ export default function ScanScreen() {
         total: parsed.setTotal ? String(parsed.setTotal) : '',
         lines: JSON.stringify(parsed.rawLines),
         photoId,
+        logId,
       },
     });
   };
 
   // Runs one capture or import. getPhotoUri resolves null when the user cancels,
   // which clears busy and stays on Scan.
-  const runScan = async (getPhotoUri: () => Promise<string | null>) => {
+  const runScan = async (getPhotoUri: () => Promise<string | null>, timePhoto = false) => {
     if (busyRef.current) return;
     busyRef.current = true;
     setBusy(true);
     // Kept so every failure path below can still show the photo on manual entry.
     let photoId = '';
     try {
+      const photoStart = Date.now();
       const photoUri = await getPhotoUri();
       if (!mountedRef.current || !photoUri) return;
+      // Only the camera is timed; picking a photo is the user's own time.
+      const photoMs = timePhoto ? Date.now() - photoStart : undefined;
       photoId = setLastPhoto(photoUri);
-      await processPhoto(photoUri, photoId);
+      await processPhoto(photoUri, photoId, photoMs);
     } catch (e) {
       // Raw error text is for developers only; manual entry shows friendly copy.
       if (__DEV__) console.warn('Scan failed', e);
@@ -139,7 +158,7 @@ export default function ScanScreen() {
       const photo = await cameraRef.current?.takePictureAsync({ quality: 0.8 });
       if (!photo?.uri) throw new Error('No photo captured');
       return photo.uri;
-    });
+    }, true);
   };
 
   // Importing needs no camera, so it is offered in the permission states too.
@@ -169,7 +188,7 @@ export default function ScanScreen() {
       <View style={[styles.center, permissionPadding]}>
         <ActivityIndicator />
         <Text style={styles.permissionText}>Checking camera access…</Text>
-        <Pressable style={styles.secondaryButton} onPress={goBack}>
+        <Pressable accessibilityRole="button" style={styles.secondaryButton} onPress={goBack}>
           <Text style={styles.secondaryButtonText}>Cancel</Text>
         </Pressable>
       </View>
@@ -186,7 +205,7 @@ export default function ScanScreen() {
             <Text style={styles.permissionText}>
               PokeWorth uses the camera to photograph your card and read its name and number.
             </Text>
-            <Pressable style={styles.primaryButton} onPress={requestPermission}>
+            <Pressable accessibilityRole="button" style={styles.primaryButton} onPress={requestPermission}>
               <Text style={styles.primaryButtonText}>Allow camera access</Text>
             </Pressable>
           </>
@@ -196,7 +215,7 @@ export default function ScanScreen() {
             <Text style={styles.permissionText}>
               Camera access for PokeWorth is turned off. Turn it on in Settings to scan cards.
             </Text>
-            <Pressable style={styles.primaryButton} onPress={openSettings}>
+            <Pressable accessibilityRole="button" style={styles.primaryButton} onPress={openSettings}>
               <Text style={styles.primaryButtonText}>Open Settings</Text>
             </Pressable>
             {settingsFailed && (
@@ -215,11 +234,11 @@ export default function ScanScreen() {
           </View>
         )}
         {permission.status === 'denied' && (
-          <Pressable style={styles.secondaryButton} onPress={enterManually}>
+          <Pressable accessibilityRole="button" style={styles.secondaryButton} onPress={enterManually}>
             <Text style={styles.secondaryButtonText}>Enter card manually</Text>
           </Pressable>
         )}
-        <Pressable style={styles.secondaryButton} onPress={goBack}>
+        <Pressable accessibilityRole="button" style={styles.secondaryButton} onPress={goBack}>
           <Text style={styles.secondaryButtonText}>Cancel</Text>
         </Pressable>
       </View>

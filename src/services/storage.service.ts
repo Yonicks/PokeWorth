@@ -24,7 +24,11 @@ export async function addRecentScan(scan: RecentScan): Promise<void> {
   const existing = await getRecentScans();
   const deduped = existing.filter((s) => s.cardId !== scan.cardId);
   const next = [scan, ...deduped].slice(0, MAX_RECENT_SCANS);
-  await AsyncStorage.setItem(RECENT_SCANS_KEY, JSON.stringify(next));
+  try {
+    await AsyncStorage.setItem(RECENT_SCANS_KEY, JSON.stringify(next));
+  } catch {
+    // Recent scans are a convenience; a full or unavailable store must not break the screen.
+  }
 }
 
 export async function clearRecentScans(): Promise<void> {

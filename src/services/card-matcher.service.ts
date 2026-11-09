@@ -364,6 +364,21 @@ export function isConfidentMatch(ranked: ScoredCandidate[]): boolean {
 }
 
 /**
+ * Whether something besides the name backs a candidate: the collector number,
+ * the set size or attack names read off the card. A name read by OCR can be an
+ * attack or a neighbouring card's text, so on its own it never skips
+ * confirmation.
+ */
+export function isCorroborated(candidate: ScoredCandidate | undefined): boolean {
+  return (
+    !!candidate &&
+    candidate.reasons.some(
+      (r) => r === 'number exact' || r === 'set size match' || r.startsWith('attacks '),
+    )
+  );
+}
+
+/**
  * Candidates worth showing first: everything within the confidence margin
  * of the best one. The rest are other printings the user can expand.
  */
@@ -469,7 +484,10 @@ export async function matchCard(parsed: ParsedCardText): Promise<MatchOutcome> {
 
   // Attack and ability names split reprints that share a name, number and
   // set size. Only the leading candidates are fetched to keep it quick.
-  if (ranked.length > 1 && parsed.rawLines.length > 0) {
+  // A lone candidate found by an OCR name alone is fetched too: its attack
+  // names are the only way left to confirm it.
+  const needsProof = fromOcr && ranked.length === 1 && !isCorroborated(ranked[0]);
+  if ((ranked.length > 1 || needsProof) && parsed.rawLines.length > 0) {
     const details = new Map<string, Card>();
     await Promise.all(
       ranked.slice(0, DETAIL_FETCH_LIMIT).map(async ({ card }) => {
@@ -486,7 +504,8 @@ export async function matchCard(parsed: ParsedCardText): Promise<MatchOutcome> {
   }
   ranked = ranked.slice(0, MAX_CANDIDATES);
 
-  const confident = isConfidentMatch(ranked);
+  // A typed name is the user's own word; an OCR name needs a second signal.
+  const confident = isConfidentMatch(ranked) && (!fromOcr || isCorroborated(ranked[0]));
   return {
     parsed,
     candidates: ranked,

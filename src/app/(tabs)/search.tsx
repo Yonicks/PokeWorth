@@ -12,7 +12,7 @@ import {
 
 import { CardTile, cardGridStyles } from '@/components/card-tile';
 import { Icon } from '@/components/icons';
-import { EmptyState, ScreenTitle } from '@/components/screen';
+import { EmptyState, ErrorState, ScreenTitle } from '@/components/screen';
 import { useCardSearch } from '@/hooks/use-cards';
 import { parseCollectorNumber } from '@/services/card-matcher.service';
 import { colors, radius, space, type } from '@/theme/tokens';
@@ -100,7 +100,7 @@ export default function SearchScreen() {
                 body="Type at least 3 letters of a name and press search, or a number like 4/102."
               />
             ) : results.isError ? (
-              <EmptyState title="Search failed" body="Check your connection and try again." />
+              <ErrorState title="Search failed" error={results.error} onRetry={() => results.refetch()} />
             ) : (
               <EmptyState title="No cards found" body={`Nothing matches “${query}”. Check the spelling.`} />
             )

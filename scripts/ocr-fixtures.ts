@@ -5,6 +5,7 @@
 import { needsCloudFallback } from '../src/services/ocr-policy';
 import {
   isConfidentMatch,
+  isCorroborated,
   nameCandidates,
   parseOcrLines,
   rankCandidates,
@@ -249,6 +250,26 @@ for (const fixture of CONTEXT_FIXTURES) {
       `FAIL  ${fixture.label}: top=${top} confident=${confident} strong=${strong} ` +
         `scores=${ranked.map((r) => `${r.card.id}:${r.score.toFixed(2)}`).join(' ')}`,
     );
+  }
+}
+
+// A name read by OCR never skips confirmation on its own (matchCard combines
+// this with isConfidentMatch).
+const lone: CardBrief[] = [{ id: 'base1-58', localId: '58', name: 'Pikachu' }];
+const PROOF_FIXTURES: { label: string; lines: string[]; expect: boolean }[] = [
+  { label: 'proof: a lone name-only match is not backed', lines: ['Pikachu', 'Thunder Shock'], expect: false },
+  { label: 'proof: the collector number backs the match', lines: ['Pikachu', '58/102'], expect: true },
+  { label: 'proof: a different number does not back it', lines: ['Pikachu', '60/64'], expect: false },
+];
+for (const fixture of PROOF_FIXTURES) {
+  const ranked = rankCandidates(lone, parseOcrLines(fixture.lines));
+  // The name alone still scores 100 %, which is why the extra check exists.
+  const actual = isCorroborated(ranked[0]);
+  if (actual === fixture.expect) {
+    console.log(`PASS  ${fixture.label}`);
+  } else {
+    failed++;
+    console.log(`FAIL  ${fixture.label}: backed=${actual} reasons=${ranked[0]?.reasons.join(', ')}`);
   }
 }
 

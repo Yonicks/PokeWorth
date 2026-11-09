@@ -2,10 +2,11 @@ import * as Clipboard from 'expo-clipboard';
 import * as WebBrowser from 'expo-web-browser';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AddToPortfolio } from '@/components/add-to-portfolio';
 import { CardHero, Facts, PriceBlock, PrintingPicker } from '@/components/card-detail';
+import { ErrorState, LoadingState } from '@/components/screen';
 import { Icon } from '@/components/icons';
 import { PriceChart } from '@/components/price-chart';
 import { useCard } from '@/hooks/use-cards';
@@ -15,6 +16,7 @@ import { toggleFavorite } from '@/services/collection.model';
 import { seriesKey } from '@/services/history.model';
 import { soldListingsUrl } from '@/services/links';
 import { defaultPrinting, formatMoney, printingsFor } from '@/services/printings.service';
+import { getScanEntry, updateScanLog } from '@/services/scan-log.service';
 import { addRecentScan } from '@/services/storage.service';
 import { colors, radius, space, type } from '@/theme/tokens';
 
@@ -69,24 +71,52 @@ function CopyName({ name }: { name: string }) {
 }
 
 export default function CardDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, logId } = useLocalSearchParams<{ id: string; logId?: string }>();
   const router = useRouter();
   const card = useCard(typeof id === 'string' ? id : undefined);
   const [selectedId, setSelectedId] = useState<string>();
 
   // Record in local history once the card is loaded.
+  // Depends on plain fields, so a background refetch does not rewrite scannedAt.
+  const loaded = card.data;
+  const loadedId = loaded?.id;
+  const loadedName = loaded?.name;
+  const loadedSet = loaded?.set?.name;
+  const loadedNumber = loaded?.localId;
+  const loadedImage = loaded?.image;
   useEffect(() => {
-    if (card.data) {
-      addRecentScan({
-        cardId: card.data.id,
-        name: card.data.name,
-        setName: card.data.set?.name,
-        localId: card.data.localId,
-        image: card.data.image,
-        scannedAt: new Date().toISOString(),
-      });
+    if (!loadedId || !loadedName) return;
+    addRecentScan({
+      cardId: loadedId,
+      name: loadedName,
+      setName: loadedSet,
+      localId: loadedNumber,
+      image: loadedImage,
+      scannedAt: new Date().toISOString(),
+    }).catch(() => undefined);
+  }, [loadedId, loadedName, loadedSet, loadedNumber, loadedImage]);
+
+  // "Wrong card" (S0): remember the card shown, then go back to the candidates of this scan.
+  const reportWrong = async () => {
+    if (!card.data || typeof logId !== 'string') return;
+    await updateScanLog(logId, { wrongCardId: card.data.id });
+    const entry = await getScanEntry(logId);
+    if (!entry || (!entry.name && !entry.number)) {
+      router.replace('/manual-entry');
+      return;
     }
-  }, [card.data]);
+    router.replace({
+      pathname: '/confirm',
+      params: {
+        name: entry.name ?? '',
+        number: entry.number ?? '',
+        total: entry.total ? String(entry.total) : '',
+        lines: JSON.stringify(entry.lines),
+        logId,
+        fix: '1',
+      },
+    });
+  };
 
   const printings = useMemo(() => (card.data ? printingsFor(card.data) : []), [card.data]);
   useRecordCard(card.data);
@@ -95,7 +125,7 @@ export default function CardDetailScreen() {
   if (card.isLoading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color={colors.goldText} />
+        <LoadingState label="Loading card…" />
       </View>
     );
   }
@@ -103,10 +133,7 @@ export default function CardDetailScreen() {
   if (card.isError || !card.data) {
     return (
       <View style={styles.center}>
-        <Text style={styles.muted}>Could not load this card. Check your connection.</Text>
-        <Pressable style={styles.retry} onPress={() => card.refetch()} accessibilityRole="button">
-          <Text style={styles.retryText}>Retry</Text>
-        </Pressable>
+        <ErrorState title="Could not load this card" error={card.error} subject="this card" onRetry={() => card.refetch()} />
       </View>
     );
   }
@@ -193,6 +220,16 @@ export default function CardDetailScreen() {
           ]}
         />
 
+        {typeof logId === 'string' ? (
+          <Pressable
+            style={({ pressed }) => [styles.wrong, pressed && styles.pressed]}
+            onPress={reportWrong}
+            accessibilityRole="button"
+            accessibilityHint="Saves this miss in the scan log and shows the other candidates">
+            <Text style={styles.wrongText}>Not the card you scanned? Choose again</Text>
+          </Pressable>
+        ) : null}
+
         <Text style={styles.disclaimer}>
           Prices are market estimates, not guaranteed resale values. Actual value depends on
           condition, printing, language and demand.
@@ -230,6 +267,8 @@ const styles = StyleSheet.create({
   },
   soldText: { fontSize: 16, fontWeight: '700', color: colors.goldText },
   section: { ...type.section, color: colors.textPrimary, marginTop: space.sm },
+  wrong: { minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+  wrongText: { fontSize: 15, fontWeight: '600', color: colors.goldText, textDecorationLine: 'underline' },
   disclaimer: { fontSize: 13, lineHeight: 18, color: colors.textTertiary },
   pressed: { opacity: 0.85 },
 });

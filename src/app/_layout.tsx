@@ -38,7 +38,8 @@ export default function RootLayout() {
           <Stack.Screen name="binder-read" options={{ title: 'Binder Page' }} />
           <Stack.Screen name="manual-entry" options={{ title: 'Enter Card Details' }} />
           <Stack.Screen name="confirm" options={{ title: 'Confirm Card' }} />
-          <Stack.Screen name="lists" options={{ title: 'Trade & Want lists' }} />
+          <Stack.Screen name="scan-log" options={{ title: 'Scan log' }} />
+          <Stack.Screen name="lists"options={{ title: 'Trade & Want lists' }} />
           <Stack.Screen name="sets" options={{ title: 'Sets' }} />
           <Stack.Screen name="sets/[id]" options={{ title: 'Set' }} />
           <Stack.Screen

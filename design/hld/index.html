@@ -152,7 +152,7 @@ footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--line);
       <li><a href="#vision">1 Vision</a></li><li><a href="#scope">2 Scope</a></li><li><a href="#architecture">3 Architecture</a></li>
       <li><a href="#stack">4 Stack</a></li><li><a href="#identification">5 Identification</a></li><li><a href="#screens">6 Screens</a></li>
       <li><a href="#structure">7 Repository</a></li><li><a href="#phases">8 Phases</a></li><li><a href="#acceptance">9 Acceptance tests</a></li>
-      <li><a href="#future">10 Future</a></li>
+      <li><a href="#next">10 Next features</a></li><li><a href="#future">11 Future</a></li>
     </ol>
   </nav>
 
@@ -404,8 +404,83 @@ Optional: "layout": "r1" | "r2"   "dryRun": true   "only": ["P2.3"]   "maxTasks"
     <p class="note rule">Hard rule (B3): zero wrong cards auto-confirmed, in any photo condition.</p>
   </section>
 
+  <section id="next">
+    <h2><span class="n">10</span>Next features</h2>
+    <p>Fourteen features proposed on 10 Nov 2026, after the collector roadmap and the binder page scan were built. None is started. Each one extends something the app already stores or does, and none needs an account.</p>
+
+    <h3>Scan speed and accuracy · before the rest</h3>
+    <p>Added 10 Nov 2026 after phone testing: scans feel slow and sometimes pick the wrong card. Causes found in the code: nothing runs until the shutter is pressed, every match is a chain of catalog requests, a match could be accepted on the name alone, and the collector number is often not read.</p>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>#</th><th>Feature</th><th>What it adds</th><th>Builds on · needs</th></tr></thead>
+        <tbody>
+          <tr><td><code>S0</code></td><td><b>Scan log</b></td><td>Time per step (photo, reading, search) and a “Wrong card” button that saves the text that was read and the card it was corrected to.</td><td>The OCR debug panel. Turns real misses into test cases for S1–S3.</td></tr>
+          <tr><td><code>S1</code></td><td><b>No auto-accept on name alone</b></td><td>A scanned card skips confirmation only when the number, the set size or the attack names also agree.</td><td><code>card-matcher.service.ts</code>. Small change.</td></tr>
+          <tr><td><code>S2</code></td><td><b>Card index on the phone</b></td><td>A compact list of every card (name, number, set size, HP, attacks, illustrator), matched on all signals at once: instant, offline, and able to tell printings apart by attacks and illustrator.</td><td>A build script that reads TCGdex, and a refresh when new sets appear. Prices still come from the network.</td></tr>
+          <tr><td><code>S3</code></td><td><b>Position-aware reading</b></td><td>Name taken from the top line, number from the bottom strip, plus the set code printed beside the number on modern cards.</td><td>A reader that returns where each word is; the current module returns text only. Development build.</td></tr>
+          <tr><td><code>S4</code></td><td><b>Live auto-scan</b></td><td>No shutter: frames are read continuously and the card locks on when two or three frames agree; the price shows in a sheet over the camera.</td><td>S2 for instant matching. A camera library with frame access (to check against the SDK 58 docs) and a development build.</td></tr>
+          <tr><td><code>S5</code></td><td><b>Binder: one read per page, card outlines</b></td><td>The page is read once and words are assigned to pockets; crops follow the real cards, so a pocket no longer includes its neighbour.</td><td>S3 for word positions. The reverted page-edge detection (commit <code>9df7d34</code>) is a starting point.</td></tr>
+          <tr><td><code>S6</code></td><td><b>Artwork check</b></td><td>The photo is compared with the candidate's catalog image to confirm the printing and reject a mismatch.</td><td>An image fingerprint per card, built from TCGdex images. Largest item; last.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>First batch · in build order</h3>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>#</th><th>Feature</th><th>What it adds</th><th>Builds on · needs</th></tr></thead>
+        <tbody>
+          <tr><td><code>N1</code></td><td><b>Purchase price and profit/loss</b></td><td>An optional “paid” amount and date per entry; gain or loss per card and for the whole portfolio.</td><td>Collection entries, which store only the current price today. Small model change.</td></tr>
+          <tr><td><code>N2</code></td><td><b>Price alerts</b></td><td>A target on a favourite or want-list card (“below $40”, “moves more than 15 %”), sent as a notification on the phone.</td><td>The daily price snapshot, which already refreshes owned cards. Needs local notifications and a refresh for cards you do not own.</td></tr>
+          <tr><td><code>N3</code></td><td><b>Server-side price history</b></td><td>The same real daily history for every user, from the day recording starts, instead of charts that begin when a card is first opened.</td><td><code>docs/price-history-backend-plan.md</code>. Needs a Supabase table and a daily job; tracked cards only, to fit the free tier.</td></tr>
+          <tr><td><code>N4</code></td><td><b>Condition per copy</b></td><td>A condition picker (Near Mint to Damaged) with quantities split by condition.</td><td>The <code>condition</code> field, saved as Near Mint for every raw copy today. TCGdex has no per-condition prices, so any value adjustment is a percentage the user sets.</td></tr>
+          <tr><td><code>N5</code></td><td><b>CSV import</b></td><td>Bring in a collection from Collectr, TCGplayer or a generic CSV, with a review screen before anything is added.</td><td>CSV export, backup and restore, and the binder review grid.</td></tr>
+          <tr><td><code>N6</code></td><td><b>Sell and trade log</b></td><td>“Mark as sold” or “Traded” with price and date, and a history of realised profit.</td><td>N1 for the profit figure. Removing a card today just deletes it.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Scanning</h3>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>#</th><th>Feature</th><th>What it adds</th><th>Builds on · needs</th></tr></thead>
+        <tbody>
+          <tr><td><code>N7</code></td><td><b>Rapid scan mode</b></td><td>The camera stays open after each match: the card is added, a short message confirms it, and the next card can be scanned.</td><td>The single-card scan and the confident-match rule; an unsure match still stops for a choice.</td></tr>
+          <tr><td><code>N8</code></td><td><b>Multi-page binder session and 3×4 pages</b></td><td>Scan page after page with one review at the end; 12-pocket pages.</td><td>Binder page scan. The 3×4 layout is in the grid model but switched off.</td></tr>
+          <tr><td><code>N9</code></td><td><b>Storage location per entry</b></td><td>A label such as “Binder 2 · page 5” or “Box A”, filled in by the binder scan, with a Portfolio filter to find the physical card.</td><td>Collection entries and the binder scan.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Portfolio</h3>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>#</th><th>Feature</th><th>What it adds</th><th>Builds on · needs</th></tr></thead>
+        <tbody>
+          <tr><td><code>N10</code></td><td><b>Breakdown screen</b></td><td>Value by set, rarity, type and raw against graded, and the share of the total held by the top 10 cards.</td><td>Data already stored with each entry.</td></tr>
+          <tr><td><code>N11</code></td><td><b>Trade evaluator</b></td><td>Pick cards for “I give” and “I get”; see both totals and the difference.</td><td>Search, prices and the trade list.</td></tr>
+          <tr><td><code>N12</code></td><td><b>Insurance or sale report (PDF)</b></td><td>An itemised list with images, printing, condition, value and date, plus the total.</td><td>The CSV export data. Needs a PDF module.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Discovery</h3>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>#</th><th>Feature</th><th>What it adds</th><th>Builds on · needs</th></tr></thead>
+        <tbody>
+          <tr><td><code>N13</code></td><td><b>Search filters and sort</b></td><td>Filter by set, rarity, type, illustrator and price range; sort by price or number.</td><td>Search, which takes a name or number only today.</td></tr>
+          <tr><td><code>N14</code></td><td><b>Pokédex tracker</b></td><td>One tile per Pokémon showing whether you own any card of it, with completion per generation.</td><td>The per-set progress on the Sets pages.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p class="note"><b>Suggested start:</b> N1, then N7 and N10. N1 is a small model change that N2 and N6 build on; N7 and N10 give the most for the least work.</p>
+    <p><b>Held back:</b> sealed products (booster boxes, Elite Trainer Boxes), because TCGdex has no sealed catalogue or prices; Japanese cards, until it is checked whether TCGdex has prices for them; accounts and cloud sync, a much larger step that the backup file covers for now.</p>
+  </section>
+
   <section id="future">
-    <h2><span class="n">10</span>Future enhancements</h2>
+    <h2><span class="n">11</span>Future enhancements</h2>
     <div class="cols">
       <div class="card">Scan several cards in one photo</div>
       <div class="card">Image-embedding recognition if text matching falls short</div>

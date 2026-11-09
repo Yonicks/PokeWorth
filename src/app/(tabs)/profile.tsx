@@ -1,4 +1,5 @@
 import Constants from 'expo-constants';
+import { useRouter } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { BackupSection } from '@/components/backup-section';
@@ -15,6 +16,7 @@ const CURRENCIES: { id: DisplayCurrency; label: string; hint: string }[] = [
 
 /** Profile tab: settings and app info. */
 export default function ProfileScreen() {
+  const router = useRouter();
   const version = Constants.expoConfig?.version ?? 'unknown';
   const settings = useSettings();
   const setCurrency = useSetCurrency();
@@ -49,6 +51,18 @@ export default function ProfileScreen() {
 
       <SectionTitle>Backup</SectionTitle>
       <BackupSection />
+
+      <SectionTitle>Scan log</SectionTitle>
+      <Text style={styles.note}>
+        See how long each scan step took and which scans picked the wrong card. Copy it to send me a bad scan.
+      </Text>
+      <Pressable
+        style={styles.linkButton}
+        onPress={() => router.push('/scan-log')}
+        accessibilityRole="button"
+        accessibilityLabel="Open the scan log">
+        <Text style={styles.linkButtonText}>Open scan log</Text>
+      </Pressable>
 
       <SectionTitle>About</SectionTitle>
       <View style={styles.block}>
@@ -91,6 +105,16 @@ const styles = StyleSheet.create({
   label: { ...type.body, color: colors.textSecondary },
   value: { ...type.body, color: colors.textPrimary, flexShrink: 1, textAlign: 'right' },
   note: { ...type.caption, fontWeight: '400', lineHeight: 18, color: colors.textTertiary },
+  linkButton: {
+    minHeight: 46,
+    borderRadius: radius.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  linkButtonText: { fontSize: 15, fontWeight: '600', color: colors.textPrimary },
   segment: {
     flexDirection: 'row',
     padding: 4,

@@ -1,5 +1,6 @@
+import { describeError } from '../services/api-error';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -14,6 +15,7 @@ import { OcrDebugPanel } from '@/components/ocr-debug-panel';
 import { PriceTag } from '@/components/price-tag';
 import { useCardMatch } from '@/hooks/use-cards';
 import { splitStrongMatches } from '@/services/card-matcher.service';
+import { updateScanLog } from '@/services/scan-log.service';
 import { cardImageUrl } from '@/services/tcgdex.service';
 import type { ParsedCardText, ScoredCandidate } from '@/types/card';
 
@@ -26,7 +28,13 @@ export default function ConfirmScreen() {
     lines?: string;
     /** Capture-store id of the photo; only for manual entry / debug, never shown as card artwork. */
     photoId?: string;
+    /** Scan log entry of this scan (S0). */
+    logId?: string;
+    /** "1" after "Wrong card": show every candidate and never skip to a card. */
+    fix?: string;
   }>();
+  const logId = typeof params.logId === 'string' ? params.logId : undefined;
+  const fixing = params.fix === '1';
 
   const enterManually = () =>
     router.push({
@@ -66,28 +74,48 @@ export default function ConfirmScreen() {
   }, [params.name, params.number, params.total, rawLines]);
 
   const match = useCardMatch(parsed);
-  const [showAll, setShowAll] = useState(false);
+  const [showAll, setShowAll] = useState(fixing);
+
+  // Scan log (S0): how long matching took and what ranked first, once per scan.
+  const matchStart = useRef(0);
+  const matchLogged = useRef(false);
+  useEffect(() => {
+    matchStart.current = Date.now();
+  }, []);
+  useEffect(() => {
+    if (!logId || fixing || !match.data || matchLogged.current) return;
+    matchLogged.current = true;
+    const { candidates, confidentCardId } = match.data;
+    void updateScanLog(logId, {
+      matchMs: Date.now() - matchStart.current,
+      topCardId: candidates[0]?.card.id,
+      candidates: candidates.length,
+      confident: !!confidentCardId,
+    });
+  }, [logId, fixing, match.data]);
 
   // Skip confirmation when there is exactly one trustworthy match.
   useEffect(() => {
-    if (match.data?.confidentCardId) {
-      router.replace({ pathname: '/result', params: { id: match.data.confidentCardId } });
+    if (match.data?.confidentCardId && !fixing) {
+      const id = match.data.confidentCardId;
+      void updateScanLog(logId, { openedCardId: id });
+      router.replace({ pathname: '/result', params: { id, ...(logId ? { logId } : {}) } });
     }
-  }, [match.data?.confidentCardId, router]);
+  }, [match.data?.confidentCardId, fixing, logId, router]);
 
   if (!parsed) {
     return (
       <View style={styles.center}>
         {__DEV__ ? <OcrDebugPanel rawLines={rawLines} /> : null}
         <Text style={styles.infoText}>Nothing to search for. Go back and try again.</Text>
-        <Pressable style={styles.retryButton} onPress={enterManually}>
+        <Pressable accessibilityRole="button" style={styles.retryButton} onPress={enterManually}>
           <Text style={styles.retryText}>Enter details manually</Text>
         </Pressable>
       </View>
     );
   }
 
-  if (match.isLoading || match.data?.confidentCardId) {
+  if (match.isLoading || (match.data?.confidentCardId && !fixing)) {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" />
@@ -99,8 +127,8 @@ export default function ConfirmScreen() {
   if (match.isError) {
     return (
       <View style={styles.center}>
-        <Text style={styles.infoText}>Search failed. Check your connection.</Text>
-        <Pressable style={styles.retryButton} onPress={() => match.refetch()}>
+        <Text style={styles.infoText}>{describeError(match.error, 'matching cards')}</Text>
+        <Pressable accessibilityRole="button" style={styles.retryButton} onPress={() => match.refetch()}>
           <Text style={styles.retryText}>Retry</Text>
         </Pressable>
       </View>
@@ -111,9 +139,12 @@ export default function ConfirmScreen() {
   const candidates = showAll ? [...strong, ...others] : strong;
 
   const renderCandidate = ({ item }: { item: ScoredCandidate }) => (
-    <Pressable
+    <Pressable accessibilityRole="button"
       style={styles.candidateRow}
-      onPress={() => router.replace({ pathname: '/result', params: { id: item.card.id } })}>
+      onPress={() => {
+        void updateScanLog(logId, { openedCardId: item.card.id });
+        router.replace({ pathname: '/result', params: { id: item.card.id, ...(logId ? { logId } : {}) } });
+      }}>
       {item.card.image ? (
         <Image source={{ uri: cardImageUrl(item.card.image, 'low') }} style={styles.thumb} />
       ) : (
@@ -143,8 +174,9 @@ export default function ConfirmScreen() {
         renderItem={renderCandidate}
         ListHeaderComponent={
           <>
+            {fixing ? <Text style={styles.header}>Pick the right card from the list.</Text> : null}
             <Text style={styles.header}>
-              Looked for: {match.data?.parsed.name ?? parsed.name ?? 'unknown name'}
+              Looked for:{match.data?.parsed.name ?? parsed.name ?? 'unknown name'}
               {parsed.localId
                 ? ` · №${parsed.localId}${parsed.setTotal ? `/${parsed.setTotal}` : ''}`
                 : ''}

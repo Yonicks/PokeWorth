@@ -41,9 +41,14 @@
     "react-native-worklets": "0.13.0"
   },
   "devDependencies": {
+    "@testing-library/react-native": "^14.1.0",
+    "@types/jest": "^30.0.0",
     "@types/node": "^26.6.6",
     "@types/react": "~19.3.0",
     "eslint-config-expo": "~58.0.4",
+    "jest": "~30.5.2",
+    "jest-expo": "~58.0.14",
+    "react-test-renderer": "^19.3.0",
     "tsx": "^4.23.15",
     "typescript": "~6.0.3"
   },
@@ -54,7 +59,18 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
-    "test": "tsx scripts/run-tests.ts"
+    "test": "npm run test:fixtures && npm run test:components",
+    "test:fixtures": "tsx scripts/run-tests.ts",
+    "test:components": "jest"
   },
-  "private": true
+  "private": true,
+  "jest": {
+    "preset": "jest-expo",
+    "testMatch": [
+      "<rootDir>/tests/**/*.test.tsx"
+    ],
+    "moduleNameMapper": {
+      "^@/(.*)$": "<rootDir>/src/$1"
+    }
+  }
 }

@@ -1,0 +1,16 @@
+# E9: a card you opened appears under Recent scans on Home.
+appId: com.pokeworth.app
+---
+- launchApp:
+    clearState: true
+- tapOn: "Search"
+- tapOn: "Search cards"
+- inputText: "Charizard 4/102"
+- pressKey: Enter
+- tapOn:
+    text: "Charizard"
+    index: 0
+- back
+- back
+- tapOn: "Home"
+- assertVisible: "Charizard"

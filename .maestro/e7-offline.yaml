@@ -1,0 +1,15 @@
+# E7: airplane mode -> friendly error with Retry; Retry works after reconnecting.
+appId: com.pokeworth.app
+---
+- launchApp:
+    clearState: true
+- setAirplaneMode: enabled
+- tapOn: "Search"
+- tapOn: "Search cards"
+- inputText: "Pikachu"
+- pressKey: Enter
+- assertVisible: "Search failed"
+- assertVisible: "Retry"
+- setAirplaneMode: disabled
+- tapOn: "Retry"
+- assertNotVisible: "Search failed"

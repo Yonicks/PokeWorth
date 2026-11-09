@@ -40,7 +40,7 @@ export function EmptyState({ title, body }: { title: string; body: string }) {
 /** Centred spinner with a short text, for screens waiting on the network. */
 export function LoadingState({ label = 'Loading…' }: { label?: string }) {
   return (
-    <View style={styles.empty} accessibilityRole="progressbar" accessibilityLabel={label}>
+    <View style={styles.empty} accessible accessibilityRole="progressbar" accessibilityLabel={label}>
       <ActivityIndicator size="large" color={colors.goldText} />
       <Text style={styles.emptyBody}>{label}</Text>
     </View>

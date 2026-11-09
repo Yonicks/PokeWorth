@@ -1,0 +1,19 @@
+# E8: add a card, restart the app, the collection is unchanged.
+appId: com.pokeworth.app
+---
+- launchApp:
+    clearState: true
+- tapOn: "Search"
+- tapOn: "Search cards"
+- inputText: "Charizard 4/102"
+- pressKey: Enter
+- tapOn:
+    text: "Charizard"
+    index: 0
+- tapOn:
+    text: "Add one Holofoil"
+- assertVisible: "1 owned"
+- stopApp
+- launchApp
+- tapOn: "Portfolio"
+- assertVisible: "Charizard"

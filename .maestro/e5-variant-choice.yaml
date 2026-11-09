@@ -1,0 +1,13 @@
+# E5: a card with several printings shows the printing chips before any price.
+appId: com.pokeworth.app
+---
+- launchApp:
+    clearState: true
+- tapOn: "Search"
+- tapOn: "Search cards"
+- inputText: "Charizard 4/102"
+- pressKey: Enter
+- tapOn:
+    text: "Charizard"
+    index: 0
+- assertVisible: "Holofoil"

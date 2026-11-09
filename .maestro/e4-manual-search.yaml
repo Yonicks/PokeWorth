@@ -1,0 +1,12 @@
+# E4: Home -> Search -> "Charizard 4/102" -> the Base Set print appears.
+appId: com.pokeworth.app
+---
+- launchApp:
+    clearState: true
+- tapOn: "Search"
+- tapOn: "Search cards"
+- inputText: "Charizard 4/102"
+- pressKey: Enter
+- assertVisible:
+    text: "Charizard"
+    index: 0

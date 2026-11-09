@@ -1,0 +1,11 @@
+# E3: camera permission denied -> manual entry still works.
+appId: com.pokeworth.app
+---
+- launchApp:
+    clearState: true
+    permissions:
+      camera: deny
+- tapOn: "Scan a card"
+- assertVisible: "Enter card manually"
+- tapOn: "Enter card manually"
+- assertVisible: "Enter Card Details"

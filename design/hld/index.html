@@ -124,6 +124,10 @@ ul.check li { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-i
 .legend i { width: 14px; height: 10px; border-radius: 3px; border: 1px solid; display: inline-block; }
 .acd { margin-top: 10px; border-top: 1px solid var(--line); padding-top: 8px; }
 .acd summary { cursor: pointer; font-size: 14px; font-weight: 600; color: var(--navy); }
+details.fold { margin-top: 10px; border-top: 1px solid var(--line); padding-top: 8px; }
+details.fold > summary { cursor: pointer; font-size: 14px; font-weight: 600; color: var(--navy); min-height: 32px; }
+details.fold.lone { border: 1px solid var(--line); border-radius: 12px; padding: 8px 14px; background: var(--surface); }
+#glance h2 { margin-bottom: 10px; }
 .aclist { margin: 8px 0 0; padding-left: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; font-size: 14.5px; line-height: 1.5; }
 .dod { margin: 8px 0 0; font-size: 14px; color: var(--ink-2); }
 footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--line); font-size: 14px; color: var(--ink-2); }
@@ -149,12 +153,38 @@ footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--line);
 
   <nav class="toc" aria-label="Contents">
     <ol>
-      <li><a href="#vision">1 Vision</a></li><li><a href="#scope">2 Scope</a></li><li><a href="#architecture">3 Architecture</a></li>
+      <li><a href="#glance"><b>Now</b></a></li><li><a href="#vision">1 Vision</a></li><li><a href="#scope">2 Scope</a></li><li><a href="#architecture">3 Architecture</a></li>
       <li><a href="#stack">4 Stack</a></li><li><a href="#identification">5 Identification</a></li><li><a href="#screens">6 Screens</a></li>
       <li><a href="#structure">7 Repository</a></li><li><a href="#phases">8 Phases</a></li><li><a href="#acceptance">9 Acceptance tests</a></li>
       <li><a href="#next">10 Next features</a></li><li><a href="#future">11 Future</a></li>
     </ol>
   </nav>
+
+  <section id="glance">
+    <h2>Where we are · 10 Nov 2026</h2>
+    <div class="cols">
+      <div class="card"><b><span class="pill s-built">Done</span></b>
+        <ul style="margin:8px 0 0;padding-left:18px">
+          <li>Scan a card or a binder page; prices, history, portfolio, sets, lists, backup</li>
+          <li>Scan log, and no auto-accept on a name alone (S0, S1)</li>
+          <li>Card index on the phone: a match takes 9–27 ms (S2)</li>
+          <li>Auto-scan switch: no shutter tap (S4, <i>not tried on a phone yet</i>)</li>
+        </ul></div>
+      <div class="card"><b><span class="pill s-part">Open</span></b>
+        <ul style="margin:8px 0 0;padding-left:18px">
+          <li>Native Android build fails on Windows’ path limit (needed to test auto-scan)</li>
+          <li>A missing price currency is still guessed (AC-P2.5)</li>
+          <li>Several cards in one session without leaving the camera (rest of S4 / N7)</li>
+        </ul></div>
+      <div class="card"><b><span class="pill s-todo">Needs you</span></b>
+        <ul style="margin:8px 0 0;padding-left:18px">
+          <li>Install CMake 3.31 in Android Studio, or run <code>eas build --profile development</code></li>
+          <li>Compare 10 prices: <code>docs/price-spot-check.md</code></li>
+          <li>Run the photo test matrix</li>
+        </ul></div>
+    </div>
+    <p class="note" style="margin-top:12px"><b>Next:</b> a dev build on the phone, then S3 (read name and number from where they sit on the card), N7 (rapid multi-card mode), then N1 (purchase price). Finished items below are folded: tap a heading to open it.</p>
+  </section>
 
   <section id="vision">
     <h2><span class="n">01</span>Product vision</h2>
@@ -346,7 +376,7 @@ footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--line);
     <p>Each phase is defined in <code>docs/dev-phases.md</code> and runs through one reusable workflow, <code>.claude/workflows/pokeworth-phase.js</code>: <b>Plan</b> (read spec and code, list tasks) → <b>Build</b> (one agent per task) → <b>Review</b> (correctness, spec and platform reviewers; each finding challenged, then fixed) → <b>Gate</b> (typecheck, lint, smoke and fixture tests; results written to <code>docs/status.md</code>).</p>
     <pre>Run the pokeworth-phase workflow with args { "phase": "P1" }
 Optional: "layout": "r1" | "r2"   "dryRun": true   "only": ["P2.3"]   "maxTasks": 8   "reviewRounds": 1</pre>
-    <div class="note" style="margin-top:14px"><b>P0 audit result</b> (<code>docs/status.md</code>, commit <code>33b35cf</code>): typecheck, lint and the smoke test pass. Six P0 features are partial, recent scans are basic, collection is missing. Top issues to fix next:
+    <div class="note fold-me" data-fold="P0 audit result (old, mostly fixed)" style="margin-top:14px"><b>P0 audit result</b> (<code>docs/status.md</code>, commit <code>33b35cf</code>): typecheck, lint and the smoke test pass. Six P0 features are partial, recent scans are basic, collection is missing. Top issues to fix next:
       <ul style="margin:8px 0 0;padding-left:20px">
         <li><b>P2 · tie bug:</b> the set-size bonus is capped at 1.0, so a <code>4/102</code> read ties three Charizard printings at 100%.</li>
         <li><b>P2 · price labels:</b> Cardmarket “Normal” appears on holo-only cards; holo and reverse holo are merged; a missing currency falls back to a guess.</li>
@@ -355,7 +385,7 @@ Optional: "layout": "r1" | "r2"   "dryRun": true   "only": ["P2.3"]   "maxTasks"
         <li><b>P4 · robustness:</b> no fetch timeout, no image caching (<code>expo-image</code> unused), no accessibility labels; <code>tsx</code> missing from dev dependencies broke the smoke gate once.</li>
       </ul>
     </div>
-    <div class="card" style="margin-top:14px"><b>Built since the plan (4–10 Nov 2026)</b>
+    <div class="card fold-me" data-fold="Built since the plan, 4–10 Nov (done)" style="margin-top:14px"><b>Built since the plan (4–10 Nov 2026)</b>
       <div class="table-scroll" style="margin-top:8px"><table>
         <thead><tr><th>Date</th><th>What landed</th></tr></thead>
         <tbody>
@@ -366,7 +396,7 @@ Optional: "layout": "r1" | "r2"   "dryRun": true   "only": ["P2.3"]   "maxTasks"
         </tbody></table></div>
       <p style="margin:8px 0 0;font-size:14px;color:var(--ink-2)">Details per step are in <code>docs/status.md</code>. The 10 Nov scan changes and the component tests and Maestro flows have not been run on a phone or emulator yet.</p>
     </div>
-    <div class="card" style="margin-top:14px"><b>Definition of Done (every phase)</b>
+    <div class="card fold-me" data-fold="Definition of Done (every phase)" style="margin-top:14px"><b>Definition of Done (every phase)</b>
       <ol style="margin:6px 0 0;padding-left:20px;font-size:15px">
         <li>Every task done, or blocked with a reason and a follow-up.</li>
         <li>Every acceptance criterion marked met, not met or needs human in <code>docs/status.md</code>.</li>
@@ -380,7 +410,7 @@ Optional: "layout": "r1" | "r2"   "dryRun": true   "only": ["P2.3"]   "maxTasks"
       </ol>
       <p style="margin:8px 0 0;font-size:14px;color:var(--ink-2)">The workflow checks 1–6 and records the acceptance results; the person running it does 7–9.</p>
     </div>
-    <div class="card" style="margin-top:14px"><b>Free test environments</b>
+    <div class="card fold-me" data-fold="Free test environments" style="margin-top:14px"><b>Free test environments</b>
       <div class="table-scroll" style="margin-top:8px"><table>
         <thead><tr><th>Environment</th><th>Start</th><th>OCR</th><th>Best for</th></tr></thead>
         <tbody>
@@ -432,9 +462,9 @@ Optional: "layout": "r1" | "r2"   "dryRun": true   "only": ["P2.3"]   "maxTasks"
 
   <section id="next">
     <h2><span class="n">10</span>Next features</h2>
-    <p>Fourteen features proposed on 10 Nov 2026, after the collector roadmap and the binder page scan were built. S0 and S1 are built; the rest are not started. Each one extends something the app already stores or does, and none needs an account.</p>
+    <p>Fourteen features proposed on 10 Nov 2026, after the collector roadmap and the binder page scan were built. S0, S1 and S2 are built, and S4 is built in its first form (auto-scan, one card at a time); the rest are not started. Each one extends something the app already stores or does, and none needs an account.</p>
 
-    <div class="note"><b>Top priority (owner, 10 Nov): the fast scanner.</b> Point the camera at one card after another and get each card and its price without pressing anything. Build order: <b>S2</b> card index on the phone (matching in milliseconds, offline), then <b>N7 / S4</b> continuous scan (the camera keeps taking photos, reads each on the device, and locks on a card when two reads in a row agree). Reading on the device needs a development build, which in turn needs the native Android build to work (see P1). In Expo Go (the iPhone today) every photo goes to OCR.space, which is slower and limited to 500 requests a day.</div>
+    <div class="note"><b>Top priority (owner, 10 Nov): the fast scanner.</b> Point the camera at one card after another and get each card and its price without pressing anything. Done so far: <b>S2</b> card index on the phone (a match in 9–27 ms, offline) and the first form of <b>S4</b> (the camera keeps taking photos, reads each on the device and opens the card when two reads in a row agree). Still to build: <b>N7</b>, staying on the camera for the next card. Reading on the device needs a development build, which in turn needs the native Android build to work (see P1). In Expo Go (the iPhone today) every photo goes to OCR.space, which is slower and limited to 500 requests a day.</div>
 
     <h3>Scan speed and accuracy · before the rest</h3>
     <p>Added 10 Nov 2026 after phone testing: scans feel slow and sometimes pick the wrong card. Causes found in the code: nothing runs until the shutter is pressed, every match is a chain of catalog requests, a match could be accepted on the name alone, and the collector number is often not read.</p>
@@ -444,9 +474,9 @@ Optional: "layout": "r1" | "r2"   "dryRun": true   "only": ["P2.3"]   "maxTasks"
         <tbody>
           <tr><td><code>S0</code></td><td><b>Scan log</b> <span class="pill s-built">Built 10 Nov</span></td><td>Time per step (photo, reading, search) and a “Wrong card” button that saves the text that was read and the card it was corrected to.</td><td>The OCR debug panel. Turns real misses into test cases for S1–S3.</td></tr>
           <tr><td><code>S1</code></td><td><b>No auto-accept on name alone</b> <span class="pill s-built">Built 10 Nov</span></td><td>A scanned card skips confirmation only when the number, the set size or the attack names also agree.</td><td><code>card-matcher.service.ts</code>. Small change.</td></tr>
-          <tr><td><code>S2</code></td><td><b>Card index on the phone</b></td><td>A compact list of every card (name, number, set size, HP, attacks, illustrator), matched on all signals at once: instant, offline, and able to tell printings apart by attacks and illustrator.</td><td>A build script that reads TCGdex, and a refresh when new sets appear. Prices still come from the network.</td></tr>
+          <tr><td><code>S2</code></td><td><b>Card index on the phone</b> <span class="pill s-built">Built 10 Nov</span></td><td>A compact list of every card (name, number, set size, HP, attacks, illustrator), matched on all signals at once: instant, offline, and able to tell printings apart by attacks and illustrator.</td><td>A build script that reads TCGdex, and a refresh when new sets appear. Prices still come from the network.</td></tr>
           <tr><td><code>S3</code></td><td><b>Position-aware reading</b></td><td>Name taken from the top line, number from the bottom strip, plus the set code printed beside the number on modern cards.</td><td>A reader that returns where each word is; the current module returns text only. Development build.</td></tr>
-          <tr><td><code>S4</code></td><td><b>Live auto-scan</b></td><td>No shutter: frames are read continuously and the card locks on when two or three frames agree; the price shows in a sheet over the camera.</td><td>S2 for instant matching. A camera library with frame access (to check against the SDK 58 docs) and a development build.</td></tr>
+          <tr><td><code>S4</code></td><td><b>Live auto-scan</b> <span class="pill s-part">Built 10 Nov · untested on a phone</span></td><td>No shutter: frames are read continuously and the card locks on when two or three frames agree; the price shows in a sheet over the camera.</td><td>S2 for instant matching. A camera library with frame access (to check against the SDK 58 docs) and a development build.</td></tr>
           <tr><td><code>S5</code></td><td><b>Binder: one read per page, card outlines</b></td><td>The page is read once and words are assigned to pockets; crops follow the real cards, so a pocket no longer includes its neighbour.</td><td>S3 for word positions. The reverted page-edge detection (commit <code>9df7d34</code>) is a starting point.</td></tr>
           <tr><td><code>S6</code></td><td><b>Artwork check</b></td><td>The photo is compared with the candidate's catalog image to confirm the printing and reject a mismatch.</td><td>An image fingerprint per card, built from TCGdex images. Largest item; last.</td></tr>
         </tbody>
@@ -852,6 +882,41 @@ mount('d-stack', block({
     T('web', 862, 193, ['html5', 'claude'], 'Web prototype', 'demo only', { dashed: true, w: 100, is: 24 }),
   ],
 }));
+</script>
+<script>
+/* Fold finished work so the page reads as "what is left". Nothing is removed: every fold opens. */
+(function () {
+  function wrap(nodes, label, extra) {
+    if (!nodes.length) return;
+    var d = document.createElement('details');
+    d.className = 'fold' + (extra ? ' ' + extra : '');
+    var s = document.createElement('summary');
+    s.textContent = label;
+    d.appendChild(s);
+    nodes[0].parentNode.insertBefore(d, nodes[0]);
+    nodes.forEach(function (n) { d.appendChild(n); });
+  }
+  // Whole blocks marked fold-me.
+  document.querySelectorAll('.fold-me').forEach(function (el) {
+    wrap([el], el.getAttribute('data-fold') || 'Details', 'lone');
+    el.style.marginTop = '0';
+  });
+  // Phases and test layers: a finished one shows only its header; an unfinished one keeps its
+  // task list and "Needs you" line, and folds the results, how-to-test and criteria.
+  document.querySelectorAll('#phases .phase, #acceptance .phase').forEach(function (p) {
+    var pill = p.querySelector('header .pill');
+    var done = pill && pill.classList.contains('s-built');
+    var rest = Array.prototype.slice.call(p.children).filter(function (c) { return c.tagName !== 'HEADER'; });
+    var fold = rest.filter(function (c) {
+      if (done) return true;
+      if (c.tagName === 'UL') return false;
+      if (c.tagName === 'P' && /^(Needs you|Open in code)/.test(c.textContent.trim())) return false;
+      return c.tagName === 'DETAILS' || c.tagName === 'P';
+    });
+    if (p.closest('#acceptance') && !done) return;
+    wrap(fold, done ? 'Done. Show details' : 'Results, how to test, acceptance criteria');
+  });
+})();
 </script>
 </body>
 </html>

@@ -73,6 +73,22 @@ export async function recognizeOnDevice(imageUri: string): Promise<string[]> {
   }
 }
 
+/**
+ * Read one auto-scan frame: the phone's own reader when there is one (never the cloud, so a
+ * bad frame cannot spend the daily limit), otherwise the cloud. Throws when the cloud fails,
+ * including its daily limit (see `isRateLimit`).
+ */
+export async function recognizeFrame(imageUri: string): Promise<string[]> {
+  if (isNativeOcrAvailable()) return recognizeOnDevice(imageUri);
+  if (!isCloudOcrEnabled()) return [];
+  return (await recognizeInCloud(imageUri)).filter((l) => l.trim().length > 0);
+}
+
+/** Whether auto-scan has any reader: the phone's own, or the cloud one at a slower pace. */
+export function isAutoScanAvailable(): boolean {
+  return isNativeOcrAvailable() || isCloudOcrEnabled();
+}
+
 /** Whether any OCR (on-device, or the cloud fallback) can run. */
 export function isOcrAvailable(): boolean {
   return isNativeOcrAvailable() || isCloudOcrEnabled();

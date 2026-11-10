@@ -17,20 +17,22 @@ import { ScanModeSwitch } from '@/components/scan-mode-switch';
 import { setLastPhoto } from '@/services/capture-store';
 import { matchCard, parseOcrLines } from '@/services/card-matcher.service';
 import {
-  AUTO_TIMEOUT_MS,
+  autoSettings,
   autoStatusText,
   emptyStreak,
-  FRAME_GAP_MS,
-  FRAME_QUALITY,
   hasReadableCard,
   isAccepted,
+  isRateLimit,
   nextStreak,
+  stopText,
+  type StopReason,
 } from '@/services/live-scan.model';
 import {
+  isAutoScanAvailable,
   isDeviceOcrAvailable,
   isOcrAvailable,
   recognizeCardText,
-  recognizeOnDevice,
+  recognizeFrame,
 } from '@/services/ocr.service';
 import { pickCardPhoto } from '@/services/photo-import.service';
 import { logScan } from '@/services/scan-log.service';
@@ -44,6 +46,8 @@ export default function ScanScreen() {
   const [permission, requestPermission, getPermission] = useCameraPermissions();
   const [busy, setBusy] = useState(false);
   const [auto, setAuto] = useState(false);
+  // Auto-scan ended by itself (timeout or limit): its message stays under the frame.
+  const [stopped, setStopped] = useState(false);
   const [autoStatus, setAutoStatus] = useState(autoStatusText(emptyStreak, 0));
   // Shown in-screen when Settings cannot be opened (Alert does nothing on web).
   const [settingsFailed, setSettingsFailed] = useState(false);
@@ -96,7 +100,7 @@ export default function ScanScreen() {
     photoUri: string,
     photoId: string,
     photoMs?: number,
-    preRead?: { lines: string[]; readMs: number },
+    preRead?: { lines: string[]; readMs: number; source: 'device' | 'cloud' },
   ) => {
     if (!preRead && !isOcrAvailable()) {
       router.replace({
@@ -108,7 +112,7 @@ export default function ScanScreen() {
 
     const readStart = Date.now();
     const ocr = preRead
-      ? { lines: preRead.lines, source: 'device' as const }
+      ? { lines: preRead.lines, source: preRead.source }
       : await recognizeCardText(photoUri);
     const readMs = preRead ? preRead.readMs : Date.now() - readStart;
     if (!mountedRef.current) return;
@@ -187,8 +191,8 @@ export default function ScanScreen() {
   };
 
   // Auto-scan (S4): small photos in a loop, read on the phone, accepted when two frames in a
-  // row match the same card confidently. Needs the phone's own reader (the cloud reader has a
-  // daily limit), so the switch only shows in a development or release build.
+  // row match the same card confidently. With the phone's own reader (development or release
+  // build) frames are fast; in Expo Go they go to the cloud reader, so they are slow and short.
   const processRef = useRef(processPhoto);
   useEffect(() => {
     processRef.current = processPhoto;
@@ -200,12 +204,22 @@ export default function ScanScreen() {
     const started = Date.now();
     let streak = emptyStreak;
     let frames = 0;
+    // Own reader: fast frames. Cloud reader (Expo Go): slow frames and an early stop.
+    const deviceReader = isDeviceOcrAvailable();
+    const pace = autoSettings(deviceReader);
+    const source = deviceReader ? ('device' as const) : ('cloud' as const);
     const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+    const giveUp = (reason: StopReason) => {
+      if (!mountedRef.current) return;
+      setAutoStatus(stopText(reason, deviceReader));
+      setStopped(true);
+      setAuto(false);
+    };
 
     void (async () => {
       while (!stop && mountedRef.current) {
-        if (Date.now() - started > AUTO_TIMEOUT_MS) {
-          setAuto(false);
+        if (Date.now() - started > pace.timeoutMs) {
+          giveUp('timeout');
           return;
         }
         if (busyRef.current || !cameraRef.current) {
@@ -216,13 +230,13 @@ export default function ScanScreen() {
         try {
           const t0 = Date.now();
           const photo = await cameraRef.current.takePictureAsync({
-            quality: FRAME_QUALITY,
+            quality: pace.quality,
             shutterSound: false,
           });
           if (stop || !photo?.uri) continue;
           const photoMs = Date.now() - t0;
           const r0 = Date.now();
-          const lines = await recognizeOnDevice(photo.uri);
+          const lines = await recognizeFrame(photo.uri);
           const readMs = Date.now() - r0;
           if (stop) continue;
           frames++;
@@ -232,16 +246,21 @@ export default function ScanScreen() {
           if (mountedRef.current) setAutoStatus(autoStatusText(streak, frames));
           if (isAccepted(streak)) {
             stop = true;
-            await processRef.current(photo.uri, setLastPhoto(photo.uri), photoMs, { lines, readMs });
+            await processRef.current(photo.uri, setLastPhoto(photo.uri), photoMs, { lines, readMs, source });
             return;
           }
         } catch (e) {
-          // One bad frame never ends auto-scan; the next frame tries again.
+          // The cloud's daily limit ends auto-scan; any other bad frame just tries again.
+          if (isRateLimit(e)) {
+            stop = true;
+            giveUp('limit');
+            return;
+          }
           if (__DEV__) console.warn('Auto-scan frame failed', e);
         } finally {
           busyRef.current = false;
         }
-        await sleep(FRAME_GAP_MS);
+        await sleep(pace.gapMs);
       }
     })();
 
@@ -345,17 +364,18 @@ export default function ScanScreen() {
       <View pointerEvents="none" style={styles.overlay}>
         <View style={[styles.cardGuide, { width: guideWidth }]} />
         <Text style={styles.guideText}>
-          {auto ? autoStatus : busy ? 'Reading card…' : 'Align the card inside the frame'}
+          {auto || stopped ? autoStatus : busy ? 'Reading card…' : 'Align the card inside the frame'}
         </Text>
       </View>
 
       <View style={[styles.modeSwitch, { top: insets.top + 8 }]}>
         <ScanModeSwitch mode="card" disabled={busy} />
-        {isDeviceOcrAvailable() && (
+        {isAutoScanAvailable() && (
           <Pressable
             style={[styles.autoButton, auto && styles.autoButtonOn]}
             onPress={() => {
               setAutoStatus(autoStatusText(emptyStreak, 0));
+              setStopped(false);
               setAuto((on) => !on);
             }}
             accessibilityRole="switch"

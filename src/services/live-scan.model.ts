@@ -13,6 +13,38 @@ export const FRAME_QUALITY = 0.5;
 /** Auto-scan stops by itself after this long without an accepted card, to save battery. */
 export const AUTO_TIMEOUT_MS = 60_000;
 
+/**
+ * Without the phone's own reader (Expo Go, web) every frame goes to OCR.space, which allows
+ * 500 requests a day. So frames come slower and auto-scan gives up sooner.
+ */
+export const CLOUD_FRAME_GAP_MS = 2500;
+export const CLOUD_FRAME_QUALITY = 0.7;
+export const CLOUD_TIMEOUT_MS = 20_000;
+
+export interface AutoSettings {
+  gapMs: number;
+  quality: number;
+  timeoutMs: number;
+}
+
+export function autoSettings(deviceReader: boolean): AutoSettings {
+  return deviceReader
+    ? { gapMs: FRAME_GAP_MS, quality: FRAME_QUALITY, timeoutMs: AUTO_TIMEOUT_MS }
+    : { gapMs: CLOUD_FRAME_GAP_MS, quality: CLOUD_FRAME_QUALITY, timeoutMs: CLOUD_TIMEOUT_MS };
+}
+
+/** OCR.space answers "HTTP 429" when the day's free requests are used up. */
+export function isRateLimit(error: unknown): boolean {
+  return /HTTP 429/.test(String(error));
+}
+
+export type StopReason = 'timeout' | 'limit';
+
+export function stopText(reason: StopReason, deviceReader: boolean): string {
+  if (reason === 'limit') return 'Cloud reading limit reached for now. Use the shutter, or try later';
+  return deviceReader ? 'Auto-scan stopped. Tap to start again' : 'No card found. Tap Auto-scan to try again';
+}
+
 export interface Streak {
   cardId?: string;
   count: number;

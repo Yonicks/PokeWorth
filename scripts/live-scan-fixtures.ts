@@ -1,7 +1,10 @@
 /** Offline checks for the auto-scan rules (src/services/live-scan.model.ts). Run: npx tsx scripts/live-scan-fixtures.ts */
 import {
+  autoSettings,
   autoStatusText,
   emptyStreak,
+  isRateLimit,
+  stopText,
   FRAMES_TO_ACCEPT,
   hasReadableCard,
   isAccepted,
@@ -35,6 +38,17 @@ check('readable: neither does not', !hasReadableCard({}));
 check('status: before the first frame', autoStatusText(emptyStreak, 0).startsWith('Auto-scan on'));
 check('status: searching', autoStatusText(emptyStreak, 3) === 'Looking for a card…');
 check('status: a candidate card asks to hold still', autoStatusText(run(['a']), 3) === 'Hold still…');
+
+// Pace: the cloud reader has a daily limit, so it is slower and gives up sooner
+const device = autoSettings(true);
+const cloud = autoSettings(false);
+check('pace: cloud frames are at least 5x slower', cloud.gapMs >= device.gapMs * 5);
+check('pace: cloud gives up sooner', cloud.timeoutMs < device.timeoutMs);
+check('pace: cloud use stays within 500 a day for 60 cards', (cloud.timeoutMs / cloud.gapMs) * 60 <= 500 * 1);
+check('limit: HTTP 429 is a rate limit', isRateLimit(new Error('Cloud OCR HTTP 429 retry 662')));
+check('limit: other errors are not', !isRateLimit(new Error('Cloud OCR HTTP 500')) && !isRateLimit('timeout'));
+check('stop text: limit says so', stopText('limit', false).includes('limit'));
+check('stop text: cloud timeout asks to retry', stopText('timeout', false).startsWith('No card found'));
 
 console.log(failed === 0 ? '\nAll live scan checks passed.' : `\n${failed} live scan check(s) failed.`);
 process.exit(failed === 0 ? 0 : 1);

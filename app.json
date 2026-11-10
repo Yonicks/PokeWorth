@@ -8,6 +8,7 @@
     "scheme": "pokeworth",
     "userInterfaceStyle": "dark",
     "ios": {
+      "bundleIdentifier": "com.pokeworth.app",
       "icon": "./assets/expo.icon"
     },
     "android": {

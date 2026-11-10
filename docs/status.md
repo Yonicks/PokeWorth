@@ -790,3 +790,46 @@ of pockets included the yellow binder edge and the cloth, and the bottom row was
 First tries failed at `ninja: Filename longer than 260 characters` (react-native-gesture-handler
 C++). Moving the project to `D:\Git\PokeWorth` was not enough; `plugins/with-short-cxx-dir.js`
 (Windows only) points the CMake staging directory at `C:/pwcxx`.
+
+## P2 acceptance check (2026-11-10)
+
+P2 was built through the collector roadmap (card detail with printings, search, matcher
+weights) instead of the phase workflow, so its criteria were never marked. Checked now
+against the code and the offline tests; no device needed.
+
+| AC | Result | Evidence |
+| --- | --- | --- |
+| AC-P2.1 | **met** (fixed today) | Confirm showed `card.id`; it now shows the set name (`useSetNames`, `getSetNames`) and at most 5 leading candidates, the rest behind "Show N other printings". `tests/confirm.test.tsx`: set name, 5-candidate cap. |
+| AC-P2.2 | **met** | `rankCandidates` weights number, set size and attack names; OCR fixtures 29/29 include the three-way `4/102` Charizard tie and attack-name tie-breaks. Newest set first when scores still tie. |
+| AC-P2.3 | **met** | Confirm only skips ahead when `confidentCardId` is set, and since S1 an OCR name also needs the number, set size or attack names to agree (`isCorroborated`). `tests/confirm.test.tsx`. |
+| AC-P2.4 | **met** | Card Details lists each printing as a chip above the price (`PrintingPicker`, `printings.service.ts`); each shows only its own prices. |
+| AC-P2.5 | **partly met** | Provider, variant, currency and date are shown, and a missing date reads "date unknown". A missing currency is still guessed: `printings.service.ts:89,122` and `tcgdex.service.ts:182,212` default to EUR (Cardmarket) and USD (TCGplayer). Not changed: it needs a rule for totals that hold an unknown currency. |
+| AC-P2.6 | **met** | "No price available" state (roadmap step 2, seen in Chrome); `pricing-fixtures.ts` covers a printing with no pricing. |
+| AC-P2.7 | **met** | Cardmarket `-holo` keys go to the reverse holo only; no "Normal" label on holo-only cards. `pricing-fixtures.ts` 12/12. |
+| AC-P2.8 | **met** | The Search tab takes a name or `4/102` / `SWSH284`; numbers go through the matcher (`search.tsx`). |
+| AC-P2.9 | **met** (fixtures added today) | Same name across sets (Pikachu V `SWSH061` / `SWSH284`), set-size tie-breaks, and now `ex` and `VMAX` names. OCR fixtures 29/29. |
+
+**Still open for P2:** AC-P2.5 (currency guessed when the source sends none) and the
+10-price spot-check against TCGplayer and Cardmarket, which needs a person
+(`docs/price-spot-check.md` lists the 10 cards with the app's prices).
+
+## P1 close-out and native build attempt (2026-11-10)
+
+Results of the 4 Nov emulator and Chrome run stand (see "P1 test run" above): AC-P1.1,
+1.3, 1.5, 1.7, 1.10 and 1.11 met; 1.2, 1.4 and 1.6 partly met; 1.8 and 1.9 not checked.
+
+`npx expo run:android --device emulator-5554` on the `Pixel_9` emulator ran for 15 minutes
+and failed in `:app:buildCMakeDebug[x86_64]`:
+`ninja: error: Stat(...RNGestureHandlerDetectorShadowNode.cpp.o): Filename longer than 260
+characters`. Only CMake 3.22.1 (ninja 1.10.2) is installed in the Android SDK, so
+`plugins/with-short-cxx-dir.js` has no newer CMake to select. The build was not retried.
+
+**Deferred, with the reason:**
+- AC-P1.9 (OCR through a development build) and AC-P1.8 (no debug panel in a release
+  build): need a native build. Unblock either by installing CMake 3.31.x from Android
+  Studio's SDK Manager (SDK Tools > CMake) and rerunning, or by building in the cloud
+  (`eas build --profile development`, free Expo account).
+- The parts of AC-P1.2, 1.4 and 1.6 that need the native OCR reader or the real Settings
+  app follow the same build.
+
+Everything Expo Go can show is covered. P1 is complete except these.

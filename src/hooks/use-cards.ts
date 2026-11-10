@@ -3,7 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 
 import { matchCard } from '@/services/card-matcher.service';
-import { getCard, getSet, listSets, searchCardsByName } from '@/services/tcgdex.service';
+import { getCard, getSet, getSetNames, listSets, searchCardsByName } from '@/services/tcgdex.service';
 import { getRecentScans } from '@/services/storage.service';
 import type { ParsedCardText } from '@/types/card';
 
@@ -30,6 +30,15 @@ export function useSets() {
     queryKey: ['sets'],
     queryFn: listSets,
     // The set list changes a few times a year.
+    staleTime: 1000 * 60 * 60 * 6,
+  });
+}
+
+/** Set names by set id, for candidate rows. Cached with the set list. */
+export function useSetNames() {
+  return useQuery({
+    queryKey: ['setNames'],
+    queryFn: getSetNames,
     staleTime: 1000 * 60 * 60 * 6,
   });
 }

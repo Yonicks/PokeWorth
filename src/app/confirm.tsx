@@ -13,11 +13,14 @@ import {
 
 import { OcrDebugPanel } from '@/components/ocr-debug-panel';
 import { PriceTag } from '@/components/price-tag';
-import { useCardMatch } from '@/hooks/use-cards';
+import { useCardMatch, useSetNames } from '@/hooks/use-cards';
 import { splitStrongMatches } from '@/services/card-matcher.service';
 import { updateScanLog } from '@/services/scan-log.service';
-import { cardImageUrl } from '@/services/tcgdex.service';
+import { cardImageUrl, setIdOf } from '@/services/tcgdex.service';
 import type { ParsedCardText, ScoredCandidate } from '@/types/card';
+
+/** Candidates shown before "Show other printings". */
+const MAX_SHOWN = 5;
 
 export default function ConfirmScreen() {
   const router = useRouter();
@@ -74,6 +77,7 @@ export default function ConfirmScreen() {
   }, [params.name, params.number, params.total, rawLines]);
 
   const match = useCardMatch(parsed);
+  const setNames = useSetNames();
   const [showAll, setShowAll] = useState(fixing);
 
   // Scan log (S0): how long matching took and what ranked first, once per scan.
@@ -135,7 +139,10 @@ export default function ConfirmScreen() {
     );
   }
 
-  const { strong, others } = splitStrongMatches(match.data?.candidates ?? []);
+  // At most 5 leading candidates (AC-P2.1); the rest sit behind "Show other printings".
+  const split = splitStrongMatches(match.data?.candidates ?? []);
+  const strong = split.strong.slice(0, MAX_SHOWN);
+  const others = [...split.strong.slice(MAX_SHOWN), ...split.others];
   const candidates = showAll ? [...strong, ...others] : strong;
 
   const renderCandidate = ({ item }: { item: ScoredCandidate }) => (
@@ -153,7 +160,7 @@ export default function ConfirmScreen() {
       <View style={styles.candidateInfo}>
         <Text style={styles.candidateName}>{item.card.name}</Text>
         <Text style={styles.candidateMeta}>
-          #{item.card.localId} · {item.card.id}
+          #{item.card.localId} · {setNames.data?.get(setIdOf(item.card)) ?? item.card.id}
         </Text>
         <PriceTag cardId={item.card.id} style={styles.candidatePrice} />
         <Text style={styles.candidateScore}>

@@ -127,6 +127,11 @@ function allSets(): Promise<SetBrief[]> {
   return setsRequest;
 }
 
+/** Set name per set id, e.g. "base1" -> "Base Set"; shown next to match candidates. */
+export async function getSetNames(): Promise<Map<string, string>> {
+  return new Map((await allSets()).map((s) => [s.id, s.name]));
+}
+
 /** Official (printed) card count per set id, e.g. "base1" -> 102. */
 export async function getSetSizes(): Promise<Map<string, number>> {
   return new Map((await allSets()).map((s) => [s.id, s.cardCount.official]));

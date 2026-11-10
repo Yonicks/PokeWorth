@@ -42,6 +42,16 @@ const FIXTURES: Fixture[] = [
     expect: { name: 'Pikachu V', localId: 'SWSH284', setTotal: null },
   },
   {
+    label: 'VMAX name keeps its suffix',
+    lines: ['VMAX', 'Charizard VMAX', 'HP 330', 'Illus. 5ban Graphics', '020/189'],
+    expect: { name: 'Charizard VMAX', localId: '020', setTotal: 189 },
+  },
+  {
+    label: 'ex name keeps its suffix',
+    lines: ['Basic', 'Pikachu ex', 'HP 190', '057/191'],
+    expect: { name: 'Pikachu ex', localId: '057', setTotal: 191 },
+  },
+  {
     label: 'promo without slash: SM60',
     lines: ['Basic', 'Lucario', '120 HP', 'SM60'],
     expect: { name: 'Lucario', localId: 'SM60', setTotal: null },

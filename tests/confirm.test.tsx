@@ -14,7 +14,10 @@ jest.mock('expo-router', () => ({
   useLocalSearchParams: () => mockParams,
   useRouter: () => ({ replace: mockReplace, push: mockPush }),
 }));
-jest.mock('@/hooks/use-cards', () => ({ useCardMatch: () => mockMatch }));
+jest.mock('@/hooks/use-cards', () => ({
+  useCardMatch: () => mockMatch,
+  useSetNames: () => ({ data: new Map([['base1', 'Base Set']]) }),
+}));
 jest.mock('@/components/price-tag', () => ({ PriceTag: () => null }));
 jest.mock('@/services/scan-log.service', () => ({ updateScanLog: jest.fn(() => Promise.resolve()) }));
 
@@ -79,6 +82,27 @@ describe('Confirm screen', () => {
     expect(screen.getAllByText('Charizard')).toHaveLength(2);
     await fireEvent.press(screen.getByText(/base4-4/));
     expect(mockReplace).toHaveBeenCalledWith({ pathname: '/result', params: { id: 'base4-4' } });
+  });
+
+  it('shows the set name, not the card id (AC-P2.1)', async () => {
+    mockMatch = {
+      isLoading: false,
+      isError: false,
+      data: { parsed, candidates: [cand('base1-4', 'Charizard', 0.9), cand('base4-4', 'Charizard', 0.9)], confidentCardId: undefined },
+      refetch: jest.fn(),
+    };
+    await render(<ConfirmScreen />);
+    expect(screen.getByText('#4 · Base Set')).toBeTruthy();
+    expect(screen.queryByText(/base1-4/)).toBeNull();
+  });
+
+  it('shows at most five leading candidates and folds the rest (AC-P2.1)', async () => {
+    const many = ['a', 'b', 'c', 'd', 'e', 'f', 'g'].map((s) => cand(`x${s}-4`, `Pikachu ${s}`, 0.9));
+    mockMatch = { isLoading: false, isError: false, data: { parsed, candidates: many, confidentCardId: undefined }, refetch: jest.fn() };
+    await render(<ConfirmScreen />);
+    expect(screen.getAllByText(/^Pikachu /)).toHaveLength(5);
+    await fireEvent.press(screen.getByText('Show 2 other printings'));
+    expect(screen.getAllByText(/^Pikachu /)).toHaveLength(7);
   });
 
   it('hides weaker printings until asked', async () => {

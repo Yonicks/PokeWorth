@@ -128,6 +128,17 @@ details.fold { margin-top: 10px; border-top: 1px solid var(--line); padding-top:
 details.fold > summary { cursor: pointer; font-size: 14px; font-weight: 600; color: var(--navy); min-height: 32px; }
 details.fold.lone { border: 1px solid var(--line); border-radius: 12px; padding: 8px 14px; background: var(--surface); }
 #glance h2 { margin-bottom: 10px; }
+[hidden] { display: none !important; }
+/* Four views of one page: status, features (what the app does), design (how it is built), build log. */
+.tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 22px 0 0; }
+.tabs button { flex: 1 1 130px; min-height: 48px; padding: 8px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); color: var(--ink-2); font: 600 15px var(--font-body); cursor: pointer; text-align: left; line-height: 1.25; }
+.tabs button small { display: block; font-weight: 400; font-size: 12.5px; color: inherit; opacity: .85; }
+.tabs button[aria-selected="true"] { background: var(--navy); color: var(--surface); border-color: var(--navy); }
+.tabs button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.board { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; }
+.board .card ul, .board .card ol { margin: 8px 0 0; padding-left: 18px; }
+.board .card li { margin-bottom: 4px; }
+.board .card li small { color: var(--ink-2); }
 .aclist { margin: 8px 0 0; padding-left: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; font-size: 14.5px; line-height: 1.5; }
 .dod { margin: 8px 0 0; font-size: 14px; color: var(--ink-2); }
 footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--line); font-size: 14px; color: var(--ink-2); }
@@ -135,7 +146,7 @@ footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--line);
 </style>
 </head>
 <body>
-<div class="wrap">
+<div class="wrap" style="padding-bottom:0">
   <header class="doc">
     <div class="brand">
       <svg width="28" height="28" viewBox="0 0 64 64" aria-hidden="true"><path d="M4 30a28 28 0 0 1 56 0H44a12 12 0 0 0-24 0z" fill="#F5B42A"/><path d="M4 34h16a12 12 0 0 0 24 0h16a28 28 0 0 1-56 0z" fill="#AFC0D8"/><circle cx="32" cy="32" r="8.5" fill="#fff" stroke="#0B1A33" stroke-width="2"/><circle cx="32" cy="32" r="4.5" fill="#0B1A33"/></svg>
@@ -151,14 +162,12 @@ footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--line);
     </div>
   </header>
 
-  <nav class="toc" aria-label="Contents">
-    <ol>
-      <li><a href="#glance"><b>Now</b></a></li><li><a href="#vision">1 Vision</a></li><li><a href="#scope">2 Scope</a></li><li><a href="#architecture">3 Architecture</a></li>
-      <li><a href="#stack">4 Stack</a></li><li><a href="#identification">5 Identification</a></li><li><a href="#screens">6 Screens</a></li>
-      <li><a href="#structure">7 Repository</a></li><li><a href="#phases">8 Phases</a></li><li><a href="#acceptance">9 Acceptance tests</a></li>
-      <li><a href="#next">10 Next features</a></li><li><a href="#future">11 Future</a></li>
-    </ol>
-  </nav>
+  <div class="tabs" role="tablist" aria-label="Views">
+    <button type="button" role="tab" data-tab="status" aria-selected="true">Status<small>Done, open, needs you</small></button>
+    <button type="button" role="tab" data-tab="features" aria-selected="false">Features<small>What the app does and what is next</small></button>
+    <button type="button" role="tab" data-tab="design" aria-selected="false">Design (HLD)<small>How the app is built</small></button>
+    <button type="button" role="tab" data-tab="build" aria-selected="false">Build log and tests<small>Phases and acceptance</small></button>
+  </div>
 
   <section id="glance">
     <h2>Where we are · 10 Nov 2026</h2>
@@ -168,7 +177,7 @@ footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--line);
           <li>Scan a card or a binder page; prices, history, portfolio, sets, lists, backup</li>
           <li>Scan log, and no auto-accept on a name alone (S0, S1)</li>
           <li>Card index on the phone: a match takes 9–27 ms (S2)</li>
-          <li>Auto-scan switch: no shutter tap (S4, <i>not tried on a phone yet</i>)</li>
+          <li>Auto-scan switch: no shutter tap (S4). Slow mode in Expo Go. <i>Being tested on the iPhone</i></li>
         </ul></div>
       <div class="card"><b><span class="pill s-part">Open</span></b>
         <ul style="margin:8px 0 0;padding-left:18px">
@@ -183,7 +192,7 @@ footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--line);
           <li>Run the photo test matrix</li>
         </ul></div>
     </div>
-    <p class="note" style="margin-top:12px"><b>Next:</b> a dev build on the phone, then S3 (read name and number from where they sit on the card), N7 (rapid multi-card mode), then N1 (purchase price). Finished items below are folded: tap a heading to open it.</p>
+    <p class="note" style="margin-top:12px"><b>Next:</b> a dev build on the phone, then S3 (read name and number from where they sit on the card), N7 (rapid multi-card mode), then N1 (purchase price). The <b>Features</b> view lists what the app does and what comes next; <b>Design</b> explains how it is built.</p>
   </section>
 
   <section id="vision">
@@ -461,7 +470,48 @@ Optional: "layout": "r1" | "r2"   "dryRun": true   "only": ["P2.3"]   "maxTasks"
   </section>
 
   <section id="next">
-    <h2><span class="n">10</span>Next features</h2>
+    <h2>Features</h2>
+    <p>What the app does today and what comes next, in plain words. Codes such as S2 or N7 match the detailed tables at the bottom.</p>
+    <div class="board">
+      <div class="card"><b><span class="pill s-built">Works today</span></b>
+        <ul>
+          <li>Scan one card with the camera or a photo</li>
+          <li>Scan a binder page (9 pockets) and add the cards together</li>
+          <li>Find the exact printing and show its price, with source and date</li>
+          <li>Search by name or number</li>
+          <li>Portfolio: total value, price history charts, biggest movers</li>
+          <li>Sets browser with your progress per set</li>
+          <li>Trade and want lists; graded cards</li>
+          <li>Backup, restore and CSV export</li>
+          <li>Scan log with a “Wrong card” button <small>(S0)</small></li>
+          <li>Never accepts a card on its name alone <small>(S1)</small></li>
+          <li>Matching on the phone in 9–27 ms <small>(S2)</small></li>
+        </ul></div>
+      <div class="card"><b><span class="pill s-part">Being tested</span></b>
+        <ul>
+          <li><b>Auto-scan</b> <small>(S4)</small>: hold a card in the frame and it opens by itself. Fast with a development build; one frame every 2.5 s in Expo Go.</li>
+        </ul>
+        <b style="margin-top:14px"><span class="pill s-todo">Next, in order</span></b>
+        <ol>
+          <li><b>Rapid scan</b> <small>(N7)</small>: stay on the camera and scan card after card</li>
+          <li><b>Smarter reading</b> <small>(S3)</small>: name from the top, number from the bottom strip</li>
+          <li><b>Purchase price and profit</b> <small>(N1)</small></li>
+          <li><b>Portfolio breakdown</b> <small>(N10)</small>: by set, rarity and type</li>
+        </ol></div>
+      <div class="card"><b><span class="pill s-todo">Later</span></b>
+        <ul>
+          <li>Price alerts <small>(N2)</small></li>
+          <li>Shared daily price history <small>(N3)</small></li>
+          <li>Condition per copy <small>(N4)</small></li>
+          <li>CSV import <small>(N5)</small>; sell and trade log <small>(N6)</small></li>
+          <li>Multi-page binder sessions <small>(N8)</small>; storage location <small>(N9)</small></li>
+          <li>Trade evaluator <small>(N11)</small>; PDF report <small>(N12)</small></li>
+          <li>Search filters <small>(N13)</small>; Pokédex tracker <small>(N14)</small></li>
+          <li>Binder page read in one pass <small>(S5)</small>; artwork check <small>(S6)</small></li>
+        </ul>
+        <p style="margin:10px 0 0;font-size:14px;color:var(--ink-2)"><b>Not planned for now:</b> sealed products, Japanese cards, accounts and cloud sync.</p></div>
+    </div>
+    <div class="fold-me" data-fold="Details of every feature (S0–S6, N1–N14)" style="margin-top:14px">
     <p>Fourteen features proposed on 10 Nov 2026, after the collector roadmap and the binder page scan were built. S0, S1 and S2 are built, and S4 is built in its first form (auto-scan, one card at a time); the rest are not started. Each one extends something the app already stores or does, and none needs an account.</p>
 
     <div class="note"><b>Top priority (owner, 10 Nov): the fast scanner.</b> Point the camera at one card after another and get each card and its price without pressing anything. Done so far: <b>S2</b> card index on the phone (a match in 9–27 ms, offline) and the first form of <b>S4</b> (the camera keeps taking photos, reads each on the device and opens the card when two reads in a row agree). Still to build: <b>N7</b>, staying on the camera for the next card. Reading on the device needs a development build, which in turn needs the native Android build to work (see P1). In Expo Go (the iPhone today) every photo goes to OCR.space, which is slower and limited to 500 requests a day.</div>
@@ -535,10 +585,11 @@ Optional: "layout": "r1" | "r2"   "dryRun": true   "only": ["P2.3"]   "maxTasks"
 
     <p class="note"><b>Suggested start:</b> the fast scanner first (S2, then N7 and S4), tuned with real scans and the scan log; then N1 and N10. N1 is a small model change that N2 and N6 build on; N7 and N10 give the most for the least work.</p>
     <p><b>Held back:</b> sealed products (booster boxes, Elite Trainer Boxes), because TCGdex has no sealed catalogue or prices; Japanese cards, until it is checked whether TCGdex has prices for them; accounts and cloud sync, a much larger step that the backup file covers for now.</p>
+    </div>
   </section>
 
   <section id="future">
-    <h2><span class="n">11</span>Future enhancements</h2>
+    <h2>Ideas beyond the list</h2>
     <div class="cols">
       <div class="card">Scan several loose cards faster (S4 live scan, N7 rapid scan); binder pages are built</div>
       <div class="card">Image-embedding recognition if text matching falls short</div>
@@ -916,6 +967,50 @@ mount('d-stack', block({
     if (p.closest('#acceptance') && !done) return;
     wrap(fold, done ? 'Done. Show details' : 'Results, how to test, acceptance criteria');
   });
+
+  // Views: one group of sections is shown at a time. The address keeps the view (#features),
+  // and an old link to a section (#phases) opens the view that holds it.
+  var TABS = {
+    status: ['glance'],
+    features: ['next', 'future'],
+    design: ['vision', 'scope', 'architecture', 'stack', 'identification', 'screens', 'structure'],
+    build: ['phases', 'acceptance']
+  };
+  var bar = document.querySelector('.tabs');
+  if (!bar) return;
+  function tabOf(id) {
+    for (var t in TABS) if (TABS[t].indexOf(id) >= 0) return t;
+    return null;
+  }
+  function show(tab, scrollId) {
+    Object.keys(TABS).forEach(function (t) {
+      TABS[t].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) el.hidden = t !== tab;
+      });
+    });
+    bar.querySelectorAll('button').forEach(function (b) {
+      b.setAttribute('aria-selected', String(b.getAttribute('data-tab') === tab));
+    });
+    var target = scrollId && document.getElementById(scrollId);
+    if (target) target.scrollIntoView();
+  }
+  function fromHash() {
+    var h = location.hash.replace('#', '');
+    if (TABS[h]) return show(h);
+    var t = tabOf(h);
+    if (t) return show(t, h);
+    show('status');
+  }
+  bar.addEventListener('click', function (e) {
+    var b = e.target.closest('button');
+    if (!b) return;
+    var tab = b.getAttribute('data-tab');
+    try { history.replaceState(null, '', '#' + tab); } catch (err) { /* the view still changes */ }
+    show(tab);
+  });
+  window.addEventListener('hashchange', fromHash);
+  fromHash();
 })();
 </script>
 </body>

@@ -850,3 +850,15 @@ Everything Expo Go can show is covered. P1 is complete except these.
 Verdict: small enough to ship or cache on the phone, so matching can run locally with no
 network call per scan. Next: build the index service and a matcher that uses it (S2), then
 continuous scan (S4).
+
+## S2 built: on-device card index (2026-11-10)
+
+- `card-index.model.ts` (pure lookups: search, by number, attacks, sets), `card-index.service.ts`
+  (download once, store as a file, refresh after 14 days, never throws), `card-index.holder.ts`
+  (index in memory). `_layout.tsx` loads it at start-up; the first launch downloads in the
+  background and scans use the API until it lands.
+- `matchCard` asks the index first (no network) and falls back to the API when the index finds
+  nothing (a newer card). The scoring and the S1 rules are unchanged.
+- Live check (`scripts/card-index-live-check.ts`, real 23,912-card index): matching takes 9-27 ms
+  per card, all 5 sample scans picked the right card with confidence. Index build 56 ms.
+- Not yet verified on a phone (needs a dev build or Expo Go run); storage uses expo-file-system.

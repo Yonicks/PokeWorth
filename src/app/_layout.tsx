@@ -1,7 +1,9 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { DarkTheme, ThemeProvider, Stack, type Theme } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { useEffect } from 'react';
 
+import { ensureCardIndex } from '@/services/card-index.service';
 import { colors } from '@/theme/tokens';
 
 const queryClient = new QueryClient({
@@ -27,6 +29,12 @@ const theme: Theme = {
 };
 
 export default function RootLayout() {
+  // Load the on-device card index (refreshing it in the background when it is old or
+  // missing), so scans match on the phone. Scanning works without it.
+  useEffect(() => {
+    void ensureCardIndex();
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider value={theme}>

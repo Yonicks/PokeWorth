@@ -6,6 +6,8 @@
 
 import type { Card, CardBrief, ParsedCardText, ScoredCandidate } from '../types/card';
 import { normalize, similarity } from '../utils/text';
+import { getCardIndex } from './card-index.holder';
+import type { CardIndex } from './card-index.model';
 import {
   getCard,
   getCardInSet,
@@ -257,6 +259,59 @@ async function briefsByNumber(localId: string, setTotal: number): Promise<CardBr
   }
 }
 
+/**
+ * Where catalog facts come from: the TCGdex API (one request per question) or the card index
+ * on the phone (no network). The matching steps are the same either way.
+ */
+interface CatalogSource {
+  search(name: string, hp?: number): Promise<CardBrief[]>;
+  digitalSetIds(): Promise<Set<string>>;
+  byNumber(localId: string, setTotal: number): Promise<CardBrief[]>;
+  setSizes(): Promise<Map<string, number>>;
+  setOrder(): Promise<Map<string, number>>;
+  /** Attack names for these cards; cards that cannot be fetched are left out. */
+  details(ids: string[]): Promise<Map<string, Card>>;
+}
+
+const apiSource: CatalogSource = {
+  search: searchCardsByName,
+  digitalSetIds: getDigitalSetIds,
+  byNumber: briefsByNumber,
+  setSizes: getSetSizes,
+  setOrder: getSetOrder,
+  async details(ids) {
+    const details = new Map<string, Card>();
+    await Promise.all(
+      ids.map(async (id) => {
+        try {
+          details.set(id, await getCard(id));
+        } catch {
+          // A network hiccup on one candidate should not sink the ranking.
+        }
+      }),
+    );
+    return details;
+  },
+};
+
+function indexSource(index: CardIndex): CatalogSource {
+  return {
+    search: async (name, hp) => index.search(name, hp),
+    digitalSetIds: async () => index.digitalSetIds,
+    byNumber: async (localId, setTotal) => index.byNumber(localId, setTotal),
+    setSizes: async () => index.setSizes,
+    setOrder: async () => index.setOrder,
+    async details(ids) {
+      const details = new Map<string, Card>();
+      for (const id of ids) {
+        const card = index.detail(id);
+        if (card) details.set(id, card);
+      }
+      return details;
+    },
+  };
+}
+
 function normalizeLocalId(id: string): string {
   // "004" -> "4", keep letter prefixes ("TG12" -> "tg12").
   return normalize(id).replace(/^0+(?=\d)/, '').replace(/\s/g, '');
@@ -412,6 +467,17 @@ export interface MatchOutcome {
  * re-checked against their set's official card count.
  */
 export async function matchCard(parsed: ParsedCardText): Promise<MatchOutcome> {
+  // The card index on the phone answers with no network call. When it finds nothing (a card
+  // newer than the index, a misread name) the API gets the same question.
+  const index = getCardIndex();
+  if (index) {
+    const local = await matchWith(parsed, indexSource(index));
+    if (local.candidates.length > 0) return local;
+  }
+  return matchWith(parsed, apiSource);
+}
+
+async function matchWith(parsed: ParsedCardText, source: CatalogSource): Promise<MatchOutcome> {
   if (!parsed.name && !parsed.localId) {
     return { parsed, candidates: [] };
   }
@@ -431,8 +497,8 @@ export async function matchCard(parsed: ParsedCardText): Promise<MatchOutcome> {
   for (const attempt of tries) {
     // With the HP read off the card, ask the catalog for that HP first: it
     // cuts "Alakazam" from 35 printings to 4. Without a hit, search by name.
-    let found = parsed.hp && fromOcr ? await searchCardsByName(attempt, parsed.hp) : [];
-    if (found.length === 0) found = await searchCardsByName(attempt);
+    let found = parsed.hp && fromOcr ? await source.search(attempt, parsed.hp) : [];
+    if (found.length === 0) found = await source.search(attempt);
     // The catalog search matches any name containing the text, so an attack
     // name ("Collect") finds "Pokémon Collector". An OCR guess only counts
     // when some result really resembles it.
@@ -447,7 +513,7 @@ export async function matchCard(parsed: ParsedCardText): Promise<MatchOutcome> {
   // in a binder; drop them so they cannot win a tie for "newest set".
   if (briefs.length > 1) {
     try {
-      const digital = await getDigitalSetIds();
+      const digital = await source.digitalSetIds();
       const physical = briefs.filter((b) => !digital.has(setIdOf(b)));
       if (physical.length > 0) briefs = physical;
     } catch {
@@ -458,7 +524,7 @@ export async function matchCard(parsed: ParsedCardText): Promise<MatchOutcome> {
   // A collector number with its set size ("050/182") points at a handful of
   // cards whatever the name says, so look it up in every set of that size.
   if (parsed.localId && parsed.setTotal) {
-    const byNumber = await briefsByNumber(parsed.localId, parsed.setTotal);
+    const byNumber = await source.byNumber(parsed.localId, parsed.setTotal);
     const known = new Set(briefs.map((b) => b.id));
     briefs = [...briefs, ...byNumber.filter((b) => !known.has(b.id))];
   }
@@ -468,14 +534,14 @@ export async function matchCard(parsed: ParsedCardText): Promise<MatchOutcome> {
   const context: RankingContext = {};
   if (parsed.setTotal && briefs.length > 1) {
     try {
-      context.setSizes = await getSetSizes();
+      context.setSizes = await source.setSizes();
     } catch {
       // Ranking falls back to name + number.
     }
   }
   if (briefs.length > 1) {
     try {
-      context.setOrder = await getSetOrder();
+      context.setOrder = await source.setOrder();
     } catch {
       // Ties then keep the catalog's order.
     }
@@ -488,16 +554,7 @@ export async function matchCard(parsed: ParsedCardText): Promise<MatchOutcome> {
   // names are the only way left to confirm it.
   const needsProof = fromOcr && ranked.length === 1 && !isCorroborated(ranked[0]);
   if ((ranked.length > 1 || needsProof) && parsed.rawLines.length > 0) {
-    const details = new Map<string, Card>();
-    await Promise.all(
-      ranked.slice(0, DETAIL_FETCH_LIMIT).map(async ({ card }) => {
-        try {
-          details.set(card.id, await getCard(card.id));
-        } catch {
-          // A network hiccup on one candidate should not sink the ranking.
-        }
-      }),
-    );
+    const details = await source.details(ranked.slice(0, DETAIL_FETCH_LIMIT).map((c) => c.card.id));
     if (details.size > 0) {
       ranked = rankCandidates(briefs, parsed, { ...context, details });
     }

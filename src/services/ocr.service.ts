@@ -53,6 +53,26 @@ function isNativeOcrAvailable(): boolean {
   return !!mod && mod.isSupported !== false;
 }
 
+/** Whether the phone's own reader exists (a development or release build, not Expo Go). */
+export function isDeviceOcrAvailable(): boolean {
+  return isNativeOcrAvailable();
+}
+
+/**
+ * Read a photo with the phone's own reader only, never the cloud. Auto-scan reads several
+ * frames a second, which the cloud's daily limit could not take. Empty when there is no
+ * device reader or it fails.
+ */
+export async function recognizeOnDevice(imageUri: string): Promise<string[]> {
+  const mod = loadModule();
+  if (!mod || mod.isSupported === false) return [];
+  try {
+    return (await mod.extractTextFromImage(imageUri)).filter((l) => l.trim().length > 0);
+  } catch {
+    return [];
+  }
+}
+
 /** Whether any OCR (on-device, or the cloud fallback) can run. */
 export function isOcrAvailable(): boolean {
   return isNativeOcrAvailable() || isCloudOcrEnabled();

@@ -15,8 +15,23 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ScanModeSwitch } from '@/components/scan-mode-switch';
 import { setLastPhoto } from '@/services/capture-store';
-import { parseOcrLines } from '@/services/card-matcher.service';
-import { isOcrAvailable, recognizeCardText } from '@/services/ocr.service';
+import { matchCard, parseOcrLines } from '@/services/card-matcher.service';
+import {
+  AUTO_TIMEOUT_MS,
+  autoStatusText,
+  emptyStreak,
+  FRAME_GAP_MS,
+  FRAME_QUALITY,
+  hasReadableCard,
+  isAccepted,
+  nextStreak,
+} from '@/services/live-scan.model';
+import {
+  isDeviceOcrAvailable,
+  isOcrAvailable,
+  recognizeCardText,
+  recognizeOnDevice,
+} from '@/services/ocr.service';
 import { pickCardPhoto } from '@/services/photo-import.service';
 import { logScan } from '@/services/scan-log.service';
 
@@ -28,6 +43,8 @@ export default function ScanScreen() {
   const cameraRef = useRef<CameraView>(null);
   const [permission, requestPermission, getPermission] = useCameraPermissions();
   const [busy, setBusy] = useState(false);
+  const [auto, setAuto] = useState(false);
+  const [autoStatus, setAutoStatus] = useState(autoStatusText(emptyStreak, 0));
   // Shown in-screen when Settings cannot be opened (Alert does nothing on web).
   const [settingsFailed, setSettingsFailed] = useState(false);
   const insets = useSafeAreaInsets();
@@ -74,8 +91,14 @@ export default function ScanScreen() {
 
   // Camera photos and imported photos share this path so they cannot drift apart.
   // Only the short store id goes into route params, never the URI itself.
-  const processPhoto = async (photoUri: string, photoId: string, photoMs?: number) => {
-    if (!isOcrAvailable()) {
+  // `preRead` is the text auto-scan already read from this photo, so it is not read twice.
+  const processPhoto = async (
+    photoUri: string,
+    photoId: string,
+    photoMs?: number,
+    preRead?: { lines: string[]; readMs: number },
+  ) => {
+    if (!preRead && !isOcrAvailable()) {
       router.replace({
         pathname: '/manual-entry',
         params: { photoId, reason: 'ocr-unavailable' },
@@ -84,8 +107,10 @@ export default function ScanScreen() {
     }
 
     const readStart = Date.now();
-    const ocr = await recognizeCardText(photoUri);
-    const readMs = Date.now() - readStart;
+    const ocr = preRead
+      ? { lines: preRead.lines, source: 'device' as const }
+      : await recognizeCardText(photoUri);
+    const readMs = preRead ? preRead.readMs : Date.now() - readStart;
     if (!mountedRef.current) return;
     const parsed = parseOcrLines(ocr.lines);
 
@@ -160,6 +185,70 @@ export default function ScanScreen() {
       return photo.uri;
     }, true);
   };
+
+  // Auto-scan (S4): small photos in a loop, read on the phone, accepted when two frames in a
+  // row match the same card confidently. Needs the phone's own reader (the cloud reader has a
+  // daily limit), so the switch only shows in a development or release build.
+  const processRef = useRef(processPhoto);
+  useEffect(() => {
+    processRef.current = processPhoto;
+  });
+
+  useEffect(() => {
+    if (!auto) return;
+    let stop = false;
+    const started = Date.now();
+    let streak = emptyStreak;
+    let frames = 0;
+    const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+    void (async () => {
+      while (!stop && mountedRef.current) {
+        if (Date.now() - started > AUTO_TIMEOUT_MS) {
+          setAuto(false);
+          return;
+        }
+        if (busyRef.current || !cameraRef.current) {
+          await sleep(150);
+          continue;
+        }
+        busyRef.current = true;
+        try {
+          const t0 = Date.now();
+          const photo = await cameraRef.current.takePictureAsync({
+            quality: FRAME_QUALITY,
+            shutterSound: false,
+          });
+          if (stop || !photo?.uri) continue;
+          const photoMs = Date.now() - t0;
+          const r0 = Date.now();
+          const lines = await recognizeOnDevice(photo.uri);
+          const readMs = Date.now() - r0;
+          if (stop) continue;
+          frames++;
+          const parsed = parseOcrLines(lines);
+          const confidentId = hasReadableCard(parsed) ? (await matchCard(parsed)).confidentCardId : undefined;
+          streak = nextStreak(streak, confidentId);
+          if (mountedRef.current) setAutoStatus(autoStatusText(streak, frames));
+          if (isAccepted(streak)) {
+            stop = true;
+            await processRef.current(photo.uri, setLastPhoto(photo.uri), photoMs, { lines, readMs });
+            return;
+          }
+        } catch (e) {
+          // One bad frame never ends auto-scan; the next frame tries again.
+          if (__DEV__) console.warn('Auto-scan frame failed', e);
+        } finally {
+          busyRef.current = false;
+        }
+        await sleep(FRAME_GAP_MS);
+      }
+    })();
+
+    return () => {
+      stop = true;
+    };
+  }, [auto]);
 
   // Importing needs no camera, so it is offered in the permission states too.
   const importPhoto = () => runScan(pickCardPhoto);
@@ -256,12 +345,25 @@ export default function ScanScreen() {
       <View pointerEvents="none" style={styles.overlay}>
         <View style={[styles.cardGuide, { width: guideWidth }]} />
         <Text style={styles.guideText}>
-          {busy ? 'Reading card…' : 'Align the card inside the frame'}
+          {auto ? autoStatus : busy ? 'Reading card…' : 'Align the card inside the frame'}
         </Text>
       </View>
 
       <View style={[styles.modeSwitch, { top: insets.top + 8 }]}>
         <ScanModeSwitch mode="card" disabled={busy} />
+        {isDeviceOcrAvailable() && (
+          <Pressable
+            style={[styles.autoButton, auto && styles.autoButtonOn]}
+            onPress={() => {
+              setAutoStatus(autoStatusText(emptyStreak, 0));
+              setAuto((on) => !on);
+            }}
+            accessibilityRole="switch"
+            accessibilityLabel="Auto-scan"
+            accessibilityState={{ checked: auto }}>
+            <Text style={styles.autoButtonText}>{auto ? 'Auto-scan: on' : 'Auto-scan: off'}</Text>
+          </Pressable>
+        )}
       </View>
 
       <View style={[styles.controls, { bottom: insets.bottom + 24 }]}>
@@ -273,21 +375,21 @@ export default function ScanScreen() {
           <Text style={styles.cancelText}>Cancel</Text>
         </Pressable>
         <Pressable
-          style={[styles.shutter, busy && styles.shutterBusy]}
+          style={[styles.shutter, (busy || auto) && styles.shutterBusy]}
           onPress={capture}
-          disabled={busy}
+          disabled={busy || auto}
           accessibilityRole="button"
           accessibilityLabel="Capture card photo"
-          accessibilityState={{ disabled: busy, busy }}>
+          accessibilityState={{ disabled: busy || auto, busy }}>
           {busy ? <ActivityIndicator color="#000" /> : <View style={styles.shutterInner} />}
         </Pressable>
         <Pressable
-          style={[styles.cancelButton, busy && styles.disabled]}
+          style={[styles.cancelButton, (busy || auto) && styles.disabled]}
           onPress={importPhoto}
-          disabled={busy}
+          disabled={busy || auto}
           accessibilityRole="button"
           accessibilityLabel="Import card photo"
-          accessibilityState={{ disabled: busy, busy }}>
+          accessibilityState={{ disabled: busy || auto, busy }}>
           <Text style={styles.cancelText}>Import photo</Text>
         </Pressable>
       </View>
@@ -327,7 +429,18 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   guideText: { color: '#fff', marginTop: 16, fontSize: 15 },
-  modeSwitch: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
+  modeSwitch: { position: 'absolute', left: 0, right: 0, alignItems: 'center', gap: 8 },
+  autoButton: {
+    minHeight: 44,
+    paddingHorizontal: 16,
+    justifyContent: 'center',
+    borderRadius: 22,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.6)',
+  },
+  autoButtonOn: { backgroundColor: '#208AEF', borderColor: '#208AEF' },
+  autoButtonText: { color: '#fff', fontSize: 15, fontWeight: '600' },
   controls: {
     position: 'absolute',
     left: 0,

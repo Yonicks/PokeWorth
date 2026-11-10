@@ -833,3 +833,20 @@ characters`. Only CMake 3.22.1 (ninja 1.10.2) is installed in the Android SDK, s
   app follow the same build.
 
 Everything Expo Go can show is covered. P1 is complete except these.
+
+## S2 feasibility: on-device card index (2026-11-10)
+
+`scripts/card-index-size.ts` downloads every English card from TCGdex with one GraphQL query
+(name, number, set size, HP, attack names) and measures it.
+
+| Measure | Result |
+| --- | --- |
+| Cards | 23,912 (4,565 distinct names) |
+| One-off download | 3.8 MB in 17.6 s |
+| Compact JSON on the phone | 1.3 MB |
+| Gzipped | 387 KB |
+| Cards with attacks / set size | 20,136 / 23,700 |
+
+Verdict: small enough to ship or cache on the phone, so matching can run locally with no
+network call per scan. Next: build the index service and a matcher that uses it (S2), then
+continuous scan (S4).
